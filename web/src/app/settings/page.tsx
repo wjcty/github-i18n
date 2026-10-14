@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { TrashIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, TrashIcon } from "@phosphor-icons/react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import {
@@ -34,6 +34,8 @@ import { ApiError } from "@/lib/api/client";
 import { metaApi, settingsApi } from "@/lib/api";
 import type { BillingMode, UserSettings } from "@/lib/api/types";
 
+const OPENROUTER_KEYS_URL = "https://openrouter.ai/keys";
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
@@ -43,6 +45,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [clearKeyOpen, setClearKeyOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
   const load = useCallback(async () => {
@@ -53,9 +56,14 @@ export default function SettingsPage() {
         metaApi.models(),
       ]);
       setSettings(s);
-      setModels(m.models);
+      const modelList = [...m.models];
+      const savedId = s.defaultModelId || m.defaultModelId;
+      if (savedId && !modelList.some((x) => x.id === savedId)) {
+        modelList.unshift({ id: savedId, name: `${savedId}（当前已保存）` });
+      }
+      setModels(modelList);
       setBillingMode(s.billingMode);
-      setDefaultModelId(s.defaultModelId || m.defaultModelId);
+      setDefaultModelId(savedId);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "加载设置失败");
     } finally {
@@ -68,13 +76,26 @@ export default function SettingsPage() {
   }, [load]);
 
   async function save() {
+    const trimmedKey = apiKey.trim();
+    if (billingMode === "BYOK") {
+      const hasExisting = settings?.openrouterKeyConfigured ?? false;
+      if (!hasExisting && !trimmedKey) {
+        toast.error("自带 Key 模式需填写你自己的 OpenRouter API Key");
+        return;
+      }
+      if (trimmedKey && !trimmedKey.startsWith("sk-or-")) {
+        toast.error("OpenRouter API Key 应以 sk-or- 开头");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
         billingMode,
         defaultModelId,
       };
-      if (apiKey !== "") body.openrouterApiKey = apiKey;
+      if (trimmedKey !== "") body.openrouterApiKey = trimmedKey;
       const updated = await settingsApi.put(body);
       setSettings(updated);
       setApiKey("");
@@ -86,9 +107,32 @@ export default function SettingsPage() {
     }
   }
 
+  async function clearApiKey() {
+    if (!settings?.openrouterKeyConfigured) {
+      toast.error("当前没有已保存的 OpenRouter Key");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await settingsApi.put({
+        billingMode,
+        defaultModelId,
+        openrouterApiKey: "",
+      });
+      setSettings(updated);
+      setApiKey("");
+      setClearKeyOpen(false);
+      toast.success("已删除已保存的 OpenRouter Key");
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "删除失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function deleteAccount() {
     if (confirmText !== "DELETE") {
-      toast.error('请输入 DELETE 确认');
+      toast.error("请输入 DELETE 确认");
       return;
     }
     try {
@@ -156,6 +200,11 @@ export default function SettingsPage() {
                   <SelectItem value="PLATFORM">平台托管配额</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {billingMode === "BYOK"
+                  ? "翻译只使用你在下方填写并保存的 Key，不会使用服务器 .env 中的平台 Key；费用由你的 OpenRouter 账户承担。"
+                  : "翻译使用平台统一配置的 OpenRouter Key（.env），并受月度字符配额限制。"}
+              </p>
             </div>
             <div className="space-y-2">
               <Label>默认模型</Label>
@@ -175,22 +224,104 @@ export default function SettingsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                可选列表为{" "}
+                <a
+                  href="https://openrouter.ai/rankings"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  OpenRouter 文本模型周榜
+                </a>{" "}
+                Top 20.
+              </p>
             </div>
             {billingMode === "BYOK" ? (
               <div className="space-y-2">
-                <Label>OpenRouter API Key</Label>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label>你的 OpenRouter API Key</Label>
+                  <a
+                    href={OPENROUTER_KEYS_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  >
+                    获取 API Key
+                    <ArrowSquareOutIcon className="size-3.5" aria-hidden />
+                  </a>
+                </div>
                 {settings.openrouterKeyConfigured ? (
                   <p className="text-xs text-muted-foreground">
-                    已配置：{settings.openrouterKeyMask}
+                    已保存你的 Key：{settings.openrouterKeyMask}
+                    （输入新 Key 可替换）
                   </p>
-                ) : null}
+                ) : (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    尚未配置。请到{" "}
+                    <a
+                      href={OPENROUTER_KEYS_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-2"
+                    >
+                      openrouter.ai/keys
+                    </a>{" "}
+                    创建并粘贴你自己的 Key，否则无法发起翻译。
+                  </p>
+                )}
                 <Input
                   type="password"
                   autoComplete="off"
-                  placeholder="sk-or-v1-…（留空则不修改）"
+                  placeholder={
+                    settings.openrouterKeyConfigured
+                      ? "sk-or-v1-…（留空则保留已保存的 Key）"
+                      : "sk-or-v1-…（必填，粘贴你自己的 Key）"
+                  }
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                 />
+                {settings.openrouterKeyConfigured ? (
+                  <Dialog open={clearKeyOpen} onOpenChange={setClearKeyOpen}>
+                    <DialogTrigger
+                      render={
+                        <Button type="button" variant="outline" size="sm" disabled={saving}>
+                          删除已保存的 Key
+                        </Button>
+                      }
+                    />
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>删除 OpenRouter API Key</DialogTitle>
+                        <DialogDescription>
+                          确定删除已保存的 Key
+                          {settings.openrouterKeyMask
+                            ? `（${settings.openrouterKeyMask}）`
+                            : ""}
+                          ？删除后需重新填写才能在自带 Key 模式下翻译。
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={saving}
+                          onClick={() => setClearKeyOpen(false)}
+                        >
+                          取消
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          disabled={saving}
+                          onClick={() => void clearApiKey()}
+                        >
+                          确认删除
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                ) : null}
               </div>
             ) : (
               <div className="space-y-2">

@@ -9,6 +9,7 @@ import {
   LANGUAGE_CODES,
   PLATFORM_MONTHLY_CHAR_LIMIT,
 } from "@/lib/constants";
+import { isAllowedOpenRouterModelId } from "@/lib/openrouter";
 
 function settingsResponse(
   settings: {
@@ -94,11 +95,26 @@ export async function PUT(request: NextRequest) {
     }
   }
 
-  const existing = await prisma.userSettings.findUnique({
+  let existing = await prisma.userSettings.findUnique({
     where: { userId: auth.user.id },
   });
   if (!existing) {
-    await prisma.userSettings.create({ data: { userId: auth.user.id } });
+    existing = await prisma.userSettings.create({
+      data: { userId: auth.user.id },
+    });
+  }
+
+  if (parsed.data.defaultModelId) {
+    const allowed = await isAllowedOpenRouterModelId(parsed.data.defaultModelId, {
+      allowExistingId: existing.defaultModelId,
+    });
+    if (!allowed) {
+      return apiError(
+        400,
+        "VALIDATION_ERROR",
+        `Unsupported model: ${parsed.data.defaultModelId}. Choose from OpenRouter text rankings top 20.`,
+      );
+    }
   }
 
   let openrouterKeyEnc: string | null | undefined = undefined;
@@ -106,8 +122,16 @@ export async function PUT(request: NextRequest) {
     if (parsed.data.openrouterApiKey === "") {
       openrouterKeyEnc = null;
     } else {
+      const key = parsed.data.openrouterApiKey.trim();
+      if (!key.startsWith("sk-or-")) {
+        return apiError(
+          400,
+          "VALIDATION_ERROR",
+          "Invalid OpenRouter API key. It should start with sk-or-.",
+        );
+      }
       try {
-        openrouterKeyEnc = encrypt(parsed.data.openrouterApiKey);
+        openrouterKeyEnc = encrypt(key);
       } catch (e) {
         return apiError(
           500,
@@ -116,6 +140,20 @@ export async function PUT(request: NextRequest) {
         );
       }
     }
+  }
+
+  const nextBillingMode = parsed.data.billingMode ?? existing.billingMode;
+  const nextKeyEnc =
+    openrouterKeyEnc !== undefined ? openrouterKeyEnc : existing.openrouterKeyEnc;
+
+  // BYOK 保存时必须有用户自己的 Key（显式清空 Key 除外，清空后需重新填写才能翻译）
+  const explicitlyClearingKey = parsed.data.openrouterApiKey === "";
+  if (nextBillingMode === "BYOK" && !nextKeyEnc && !explicitlyClearingKey) {
+    return apiError(
+      400,
+      "VALIDATION_ERROR",
+      "BYOK mode requires your own OpenRouter API key. Get one at https://openrouter.ai/keys",
+    );
   }
 
   const updated = await prisma.userSettings.update({

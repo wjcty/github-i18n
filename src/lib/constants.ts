@@ -55,6 +55,9 @@ export const LANGUAGE_CODES = new Set<string>(LANGUAGES.map((l) => l.code));
 
 export const DEFAULT_MODEL_ID = "openai/gpt-4o-mini";
 
+/** 用户申请 / 管理 OpenRouter API Key 的官方页面 */
+export const OPENROUTER_KEYS_URL = "https://openrouter.ai/keys";
+
 export const PLATFORM_MONTHLY_CHAR_LIMIT = Number(
   process.env.PLATFORM_MONTHLY_CHAR_LIMIT ?? "500000",
 );

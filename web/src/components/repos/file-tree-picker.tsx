@@ -60,9 +60,14 @@ function TreeRow({
 }) {
   const mdUnder = collectMdUnder(node);
   const isDir = node.type === "dir";
+  const selectedUnder = isDir
+    ? mdUnder.filter((p) => selected.has(p)).length
+    : 0;
   const checked = isDir
-    ? mdUnder.length > 0 && mdUnder.every((p) => selected.has(p))
+    ? mdUnder.length > 0 && selectedUnder === mdUnder.length
     : selected.has(node.path);
+  const indeterminate =
+    isDir && selectedUnder > 0 && selectedUnder < mdUnder.length;
   const canToggle = node.translatable || (isDir && mdUnder.length > 0);
   const isExpanded = isDir && expanded.has(node.path);
   const hasChildren = Boolean(node.children?.length);
@@ -94,6 +99,7 @@ function TreeRow({
           <Checkbox
             id={`path-${node.path}`}
             checked={checked}
+            indeterminate={indeterminate}
             onCheckedChange={(v) => onToggle(node.path, v === true, node)}
           />
         ) : (
