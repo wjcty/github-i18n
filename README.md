@@ -2,6 +2,10 @@
 
 这是一份用于验证自动翻译流程的简短说明。
 
+## 🌐 多语言版本 / Translations
+[English](./translations/en/README.md)
+---
+
 ## 功能
 
 - 导入已安装的 GitHub 仓库
