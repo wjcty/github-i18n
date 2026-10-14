@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { GlobeHemisphereWest, GithubLogo, SignOut } from "@phosphor-icons/react";
+import { GlobeHemisphereWest, SignOut } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { AnchorButton, LinkButton } from "@/components/ui/link-button";
+import { LinkButton } from "@/components/ui/link-button";
+import { GitHubSignInButton } from "@/components/auth/github-signin-button";
 
 export function SiteHeader() {
   const { data: session, status } = useSession();
@@ -43,10 +44,7 @@ export function SiteHeader() {
               </Button>
             </>
           ) : (
-            <AnchorButton size="sm" href="/api/auth/signin/github">
-              <GithubLogo className="size-4" weight="fill" aria-hidden />
-              GitHub 登录
-            </AnchorButton>
+            <GitHubSignInButton />
           )}
         </nav>
       </div>

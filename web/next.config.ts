@@ -6,13 +6,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+  // /api 由 app/api/[...path]/route.ts 显式转发，确保 Auth.js Cookie / Set-Cookie 不被 rewrite 丢掉
+  env: {
+    API_URL: backendUrl,
   },
 };
 

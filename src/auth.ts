@@ -2,6 +2,8 @@ import "@/lib/env";
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { Adapter, AdapterUser } from "next-auth/adapters";
+import type { User } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { persistUserTokens, syncPrimaryEmail } from "@/lib/github/user-token";
 
@@ -22,14 +24,86 @@ if (!githubClientId || !githubClientSecret) {
   );
 }
 
+function toAdapterUser(user: User): AdapterUser {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email ?? user.primaryEmail ?? "",
+    image: user.image ?? user.avatarUrl,
+    emailVerified: user.emailVerified ? new Date() : null,
+  };
+}
+
+const prismaAdapter = PrismaAdapter(prisma);
+
+const adapter: Adapter = {
+  ...prismaAdapter,
+  async createUser(data) {
+    const user = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        image: data.image,
+        emailVerified: Boolean(data.emailVerified),
+        login: data.name ?? data.email?.split("@")[0] ?? "user",
+        avatarUrl: data.image,
+        primaryEmail: data.email,
+      },
+    });
+    return toAdapterUser(user);
+  },
+  async getUser(id) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    return user ? toAdapterUser(user) : null;
+  },
+  async getUserByEmail(email) {
+    if (!email) return null;
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ email }, { primaryEmail: email }] },
+    });
+    return user ? toAdapterUser(user) : null;
+  },
+  async updateUser(data) {
+    const user = await prisma.user.update({
+      where: { id: data.id },
+      data: {
+        name: data.name,
+        email: data.email,
+        image: data.image,
+        emailVerified:
+          data.emailVerified === undefined
+            ? undefined
+            : Boolean(data.emailVerified),
+        avatarUrl: data.image,
+        primaryEmail: data.email,
+      },
+    });
+    return toAdapterUser(user);
+  },
+  async getSessionAndUser(sessionToken) {
+    const result = await prisma.session.findUnique({
+      where: { sessionToken },
+      include: { user: true },
+    });
+    if (!result) return null;
+    const { user, ...session } = result;
+    return { user: toAdapterUser(user), session };
+  },
+};
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter,
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   providers: [
     GitHub({
       clientId: githubClientId,
       clientSecret: githubClientSecret,
+      // 前后端分离反代时 PKCE Cookie 易丢失，GitHub App 用 state 即可
+      checks: ["state"],
       authorization: { params: { scope: "read:user user:email" } },
+      httpOptions: {
+        timeout: 30000,
+      },
     }),
   ],
   events: {
@@ -46,6 +120,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             login,
             name: user.name,
             avatarUrl: user.image,
+            image: user.image,
+            email: user.email,
           },
         });
 

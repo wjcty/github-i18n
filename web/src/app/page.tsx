@@ -1,13 +1,12 @@
 import {
-  ArrowRight,
   GitPullRequest,
   GlobeHemisphereWest,
   Lightning,
 } from "@phosphor-icons/react/dist/ssr";
 import { SiteHeader } from "@/components/layout/site-header";
-import { AnchorButton, LinkButton } from "@/components/ui/link-button";
+import { HomeHeroActions } from "@/components/auth/home-hero-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { authApi, metaApi } from "@/lib/api";
+import { metaApi } from "@/lib/api";
 
 const features = [
   {
@@ -33,13 +32,7 @@ export default async function HomePage({
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const sp = await searchParams;
-  let session = null;
-  try {
-    session = await authApi.session();
-  } catch {
-    session = null;
-  }
-  let installUrl = "/api/auth/signin/github";
+  let installUrl = "";
   try {
     const app = await metaApi.app();
     installUrl = app.githubAppInstallUrl;
@@ -72,29 +65,7 @@ export default async function HomePage({
             GitHub-i18n 帮助开源维护者将文档自动翻译为多种语言，支持增量同步与
             OpenRouter 多模型。
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {session?.user ? (
-              <LinkButton size="lg" href={callback}>
-                进入仪表盘
-                <ArrowRight className="size-4" weight="bold" aria-hidden />
-              </LinkButton>
-            ) : (
-              <>
-                <AnchorButton size="lg" href="/api/auth/signin/github">
-                  GitHub 登录
-                </AnchorButton>
-                <AnchorButton
-                  size="lg"
-                  variant="outline"
-                  href={installUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  安装 GitHub App
-                </AnchorButton>
-              </>
-            )}
-          </div>
+          <HomeHeroActions installUrl={installUrl} callbackUrl={callback} />
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">

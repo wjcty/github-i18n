@@ -37,12 +37,31 @@ export async function fetchRepoTree(
     };
   }
 
-  const { data: branch } = await octokit.rest.repos.getBranch({
-    owner,
-    repo,
-    branch: defaultBranch,
-  });
-  const commitSha = branch.commit.sha;
+  let commitSha: string;
+  try {
+    const { data: branch } = await octokit.rest.repos.getBranch({
+      owner,
+      repo,
+      branch: defaultBranch,
+    });
+    commitSha = branch.commit.sha;
+  } catch (e) {
+    const status = (e as { status?: number }).status;
+    const message = e instanceof Error ? e.message : "";
+    const emptyRepo =
+      status === 404 ||
+      status === 409 ||
+      /Branch not found|Git Repository is empty/i.test(message);
+    if (emptyRepo) {
+      return {
+        nodes: [],
+        truncated: false,
+        commitSha: "",
+        cachedAt: now,
+      };
+    }
+    throw e;
+  }
 
   const { data: tree } = await octokit.rest.git.getTree({
     owner,

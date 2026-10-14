@@ -103,10 +103,35 @@ export async function processTranslationTask(taskId: string) {
     const octokit = await getInstallationOctokit(repo.installationId);
     const { data: repoMeta } = await octokit.rest.repos.get({ owner, repo: name });
     const defaultBranch = repoMeta.default_branch;
-    const headSha =
-      task.afterCommit ??
-      (await octokit.rest.repos.getBranch({ owner, repo: name, branch: defaultBranch }))
-        .data.commit.sha;
+    let headSha: string;
+    try {
+      headSha =
+        task.afterCommit ??
+        (await octokit.rest.repos.getBranch({ owner, repo: name, branch: defaultBranch }))
+          .data.commit.sha;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      const message = e instanceof Error ? e.message : "";
+      const emptyRepo =
+        status === 404 ||
+        status === 409 ||
+        /Branch not found|Git Repository is empty/i.test(message);
+      if (emptyRepo) {
+        await prisma.translationTask.update({
+          where: { id: taskId },
+          data: {
+            status: "skipped",
+            skipReason: "EMPTY_REPOSITORY",
+            finishedAt: new Date(),
+            totalFiles: 0,
+            doneFiles: 0,
+            currentFile: null,
+          },
+        });
+        return;
+      }
+      throw e;
+    }
 
     let candidatePaths: string[] = [];
     if (task.mode === "incremental" && repo.lastTranslatedBaseCommit) {
@@ -176,14 +201,6 @@ export async function processTranslationTask(taskId: string) {
           sourceText,
         );
 
-        if (filePath.toLowerCase() === "readme.md") {
-          translated = upsertReadmeTranslationBlock(
-            translated,
-            targets,
-            repo.baseLanguage,
-          );
-        }
-
         const outPath = translatedPath(lang, filePath);
         fileOutputs.push({ path: outPath, content: translated });
 
@@ -207,7 +224,7 @@ export async function processTranslationTask(taskId: string) {
       }
     }
 
-    if (repo.ignoreFileContent.trim()) {
+    if (repo.ignoreFileContent?.trim()) {
       fileOutputs.push({
         path: ".github-i18n-ignore",
         content: repo.ignoreFileContent.trim() + "\n",

@@ -48,6 +48,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       commitSha: tree.commitSha,
       cachedAt: tree.cachedAt.toISOString(),
       truncated: tree.truncated,
+      empty: !tree.commitSha && tree.nodes.length === 0,
       nodes: tree.nodes,
     });
   } catch (e) {

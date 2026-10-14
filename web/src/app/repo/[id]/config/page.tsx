@@ -220,6 +220,14 @@ export default function RepoConfigPage() {
           <CardTitle className="font-mono text-base">翻译范围</CardTitle>
         </CardHeader>
         <CardContent>
+          {tree?.empty || tree?.nodes.length === 0 ? (
+            <Alert className="mb-4">
+              <AlertDescription>
+                仓库为空或默认分支还不存在，请先向 GitHub 推送包含 Markdown
+                的提交后再刷新。
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {tree?.truncated ? (
             <Alert className="mb-4">
               <AlertDescription>

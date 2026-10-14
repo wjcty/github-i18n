@@ -124,6 +124,7 @@ export type RepoTree = {
   cachedAt: string;
   truncated: boolean;
   nodes: TreeNode[];
+  empty?: boolean;
 };
 
 export type TaskDetail = {

@@ -6,6 +6,12 @@ export type ChatMessage = {
   content: string;
 };
 
+const REGION_FALLBACK_MODELS = [
+  "deepseek/deepseek-chat",
+  "qwen/qwen-2.5-7b-instruct",
+  "meta-llama/llama-3.1-8b-instruct",
+];
+
 export async function openRouterChat(
   apiKey: string,
   messages: ChatMessage[],
@@ -13,6 +19,7 @@ export async function openRouterChat(
   jsonMode = false,
 ): Promise<{ content: string; charsIn: number; charsOut: number }> {
   const charsIn = messages.reduce((n, m) => n + m.content.length, 0);
+  const models = [model, ...REGION_FALLBACK_MODELS.filter((id) => id !== model)];
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -23,6 +30,7 @@ export async function openRouterChat(
     },
     body: JSON.stringify({
       model,
+      models,
       messages,
       ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
     }),
@@ -58,17 +66,23 @@ export async function fetchOpenRouterModels(): Promise<
     const models = (data.data ?? [])
       .filter(
         (m) =>
-          m.id.includes("gpt") ||
-          m.id.includes("claude") ||
-          m.id.includes("llama") ||
-          m.id.includes("gemini"),
+          !m.id.includes(":batch") &&
+          (m.id.includes("gpt") ||
+            m.id.includes("claude") ||
+            m.id.includes("llama") ||
+            m.id.includes("gemini") ||
+            m.id.includes("deepseek") ||
+            m.id.includes("qwen")),
       )
-      .slice(0, 50)
+      .slice(0, 49)
       .map((m) => ({
         id: m.id,
         name: m.name ?? m.id,
         contextLength: m.context_length ?? 128000,
       }));
+    if (!models.some((m) => m.id === DEFAULT_MODEL_ID)) {
+      return [...fallback, ...models];
+    }
     return models.length ? models : fallback;
   } catch {
     return fallback;

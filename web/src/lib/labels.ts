@@ -17,4 +17,5 @@ export const taskStatusLabel: Record<TaskStatus, string> = {
 
 export const skipReasonLabel: Record<string, string> = {
   NO_FILES_TO_TRANSLATE: "没有需要翻译的文件",
+  EMPTY_REPOSITORY: "仓库为空，还没有可翻译的提交",
 };

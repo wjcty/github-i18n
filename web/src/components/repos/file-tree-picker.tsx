@@ -15,6 +15,11 @@ function collectMdPaths(nodes: TreeNode[]): string[] {
   return out;
 }
 
+function collectMdUnder(node: TreeNode): string[] {
+  if (node.type === "file") return node.translatable ? [node.path] : [];
+  return (node.children ?? []).flatMap(collectMdUnder);
+}
+
 function TreeRow({
   node,
   selected,
@@ -23,11 +28,15 @@ function TreeRow({
 }: {
   node: TreeNode;
   selected: Set<string>;
-  onToggle: (path: string, checked: boolean) => void;
+  onToggle: (path: string, checked: boolean, node: TreeNode) => void;
   depth: number;
 }) {
-  const checked = selected.has(node.path);
+  const mdUnder = collectMdUnder(node);
   const isDir = node.type === "dir";
+  const checked = isDir
+    ? mdUnder.length > 0 && mdUnder.every((p) => selected.has(p))
+    : selected.has(node.path);
+  const canToggle = node.translatable || (isDir && mdUnder.length > 0);
 
   return (
     <li>
@@ -35,11 +44,11 @@ function TreeRow({
         className="flex items-center gap-2 rounded-md py-1 pr-2 hover:bg-muted/60"
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
-        {node.translatable ? (
+        {canToggle ? (
           <Checkbox
             id={`path-${node.path}`}
             checked={checked}
-            onCheckedChange={(v) => onToggle(node.path, v === true)}
+            onCheckedChange={(v) => onToggle(node.path, v === true, node)}
           />
         ) : (
           <span className="inline-block size-4 shrink-0" aria-hidden />
@@ -50,10 +59,10 @@ function TreeRow({
           <FileMd className="size-4 shrink-0 text-primary" aria-hidden />
         )}
         <label
-          htmlFor={node.translatable ? `path-${node.path}` : undefined}
+          htmlFor={canToggle ? `path-${node.path}` : undefined}
           className="min-w-0 flex-1 cursor-pointer truncate font-mono text-xs"
         >
-          {node.path.split("/").pop()}
+          {node.path.split("/").filter(Boolean).pop()}
           {isDir ? "/" : ""}
         </label>
       </div>
@@ -86,10 +95,14 @@ export function FileTreePicker({
   const selected = useMemo(() => new Set(includePaths), [includePaths]);
   const allMd = useMemo(() => collectMdPaths(nodes), [nodes]);
 
-  function toggle(path: string, checked: boolean) {
+  function toggle(path: string, checked: boolean, node: TreeNode) {
     const next = new Set(selected);
-    if (checked) next.add(path);
-    else next.delete(path);
+    const targets =
+      node.type === "dir" ? collectMdUnder(node) : node.translatable ? [path] : [];
+    for (const p of targets) {
+      if (checked) next.add(p);
+      else next.delete(p);
+    }
     onChange(Array.from(next));
   }
 

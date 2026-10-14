@@ -9,11 +9,15 @@ datasource db {
 
 model User {
   id                    String    @id @default(cuid())
-  githubId              String?   @unique
-  login                 String
+  /// Auth.js Prisma adapter fields
   name                  String?
+  email                 String?   @unique
+  image                 String?
+  githubId              String?   @unique
+  login                 String    @default("")
   avatarUrl             String?
   primaryEmail          String?
+  /// GitHub 已验证主邮箱（业务字段；Auth.js 的 emailVerified 是 DateTime，这里用 Boolean）
   emailVerified         Boolean   @default(false)
   encryptedAccessToken  String?   @db.Text
   encryptedRefreshToken String?   @db.Text
