@@ -101,9 +101,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // 前后端分离反代时 PKCE Cookie 易丢失，GitHub App 用 state 即可
       checks: ["state"],
       authorization: { params: { scope: "read:user user:email" } },
-      httpOptions: {
-        timeout: 30000,
-      },
     }),
   ],
   events: {

@@ -1,5 +1,5 @@
 import "@/lib/env";
-import { claimNextJob, completeJob, failJob } from "@/lib/jobs";
+import { claimNextJob, completeJob, failJob, reflectTaskFailure } from "@/lib/jobs";
 import { processTranslationTask } from "./process-task";
 
 const POLL_MS = 1500;
@@ -17,12 +17,13 @@ async function loop() {
       try {
         await processTranslationTask(job.taskId);
         await completeJob(job.id);
-      } catch {
+      } catch (err) {
+        console.error(
+          `[worker] task ${job.taskId} attempt ${job.attempts} failed:`,
+          err,
+        );
         await failJob(job.id, 5000 * job.attempts);
-        const task = job.task;
-        if (job.attempts >= 3 && task) {
-          // task already marked failed in processTranslationTask
-        }
+        await reflectTaskFailure(job.taskId, job.attempts);
       }
     } catch (err) {
       // eslint-disable-next-line no-console

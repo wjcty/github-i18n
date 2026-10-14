@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   ArrowSquareOut,
   ArrowCounterClockwise,
+  FileMd,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
@@ -14,7 +15,7 @@ import {
 import { TaskStatusBadge } from "@/components/repos/translation-status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AnchorButton, LinkButton } from "@/components/ui/link-button";
+import { AnchorButton } from "@/components/ui/link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -29,15 +30,34 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskProgress } from "@/hooks/use-task-progress";
 import { ApiError } from "@/lib/api/client";
 import { tasksApi } from "@/lib/api";
+import type { TaskFile } from "@/lib/api/types";
 import { skipReasonLabel } from "@/lib/labels";
 
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { task, progress, refresh } = useTaskProgress(id);
+  const [files, setFiles] = useState<TaskFile[]>([]);
   const [previewLang, setPreviewLang] = useState("");
-  const [previewPath, setPreviewPath] = useState("README.md");
+  const [previewPath, setPreviewPath] = useState("");
   const [previewContent, setPreviewContent] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
+
+  const terminal = task?.status === "completed" || task?.status === "skipped";
+
+  const loadFiles = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await tasksApi.files(id);
+      setFiles(data.files);
+    } catch {
+      setFiles([]);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (terminal) void loadFiles();
+  }, [terminal, loadFiles]);
 
   useEffect(() => {
     if (task?.targetLanguages?.[0] && !previewLang) {
@@ -45,14 +65,33 @@ export default function TaskDetailPage() {
     }
   }, [task, previewLang]);
 
+  // 当前语言下可预览的文件
+  const filesForLang = files.filter((f) =>
+    f.items.some((it) => it.lang === previewLang),
+  );
+
+  // 语言或文件列表变化时，保证选中的文件有效
+  useEffect(() => {
+    if (filesForLang.length === 0) {
+      setPreviewPath("");
+      return;
+    }
+    if (!filesForLang.some((f) => f.sourcePath === previewPath)) {
+      setPreviewPath(filesForLang[0].sourcePath);
+    }
+  }, [filesForLang, previewPath]);
+
   async function loadPreview() {
     if (!id || !previewLang || !previewPath) return;
+    setPreviewLoading(true);
     try {
       const data = await tasksApi.preview(id, previewLang, previewPath);
       setPreviewContent(data.content);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "预览不可用");
       setPreviewContent("");
+    } finally {
+      setPreviewLoading(false);
     }
   }
 
@@ -86,11 +125,9 @@ export default function TaskDetailPage() {
       <PageTitle
         title="翻译任务"
         description={task.fullName}
+        backHref={`/repo/${task.repositoryId}`}
         actions={
           <>
-            <LinkButton variant="outline" size="sm" href={`/repo/${task.repositoryId}`}>
-              仓库
-            </LinkButton>
             {task.status === "failed" && task.retryCount < 3 ? (
               <Button
                 size="sm"
@@ -125,6 +162,15 @@ export default function TaskDetailPage() {
               ? ` · 当前 ${progress?.currentFile ?? task.progress.currentFile}`
               : ""}
           </p>
+          {(task.status === "pending" || task.status === "running") &&
+          task.errorMessage ? (
+            <Alert>
+              <AlertTitle>正在自动重试</AlertTitle>
+              <AlertDescription className="break-all">
+                上次尝试未成功，系统正在自动重试：{task.errorMessage}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {task.status === "failed" && task.errorMessage ? (
             <Alert variant="destructive">
               <AlertTitle>任务失败</AlertTitle>
@@ -141,15 +187,47 @@ export default function TaskDetailPage() {
         </CardContent>
       </Card>
 
-      {(task.status === "completed" || task.status === "skipped") &&
-      task.targetLanguages.length ? (
+      {terminal && files.length ? (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+            <CardTitle className="font-mono text-base">翻译文件</CardTitle>
+            <span className="text-xs text-muted-foreground">
+              共 {files.length} 个
+              {task.finishedAt
+                ? ` · 完成于 ${new Date(task.finishedAt).toLocaleString()}`
+                : ""}
+            </span>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ul className="max-h-72 divide-y divide-border overflow-y-auto">
+              {files.map((f) => (
+                <li
+                  key={f.sourcePath}
+                  className="flex items-start gap-2 px-4 py-2.5"
+                >
+                  <FileMd className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-sm">{f.sourcePath}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {f.items.map((it) => it.lang).join(" · ")}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {terminal && task.targetLanguages.length ? (
         <Card>
           <CardHeader>
             <CardTitle className="font-mono text-base">结果预览</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Select
+                items={task.targetLanguages.map((l) => ({ value: l, label: l }))}
                 value={previewLang}
                 onValueChange={(v) => v && setPreviewLang(v)}
               >
@@ -164,21 +242,44 @@ export default function TaskDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <input
-                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 font-mono text-sm sm:w-auto sm:flex-1"
+              <Select
+                items={filesForLang.map((f) => ({
+                  value: f.sourcePath,
+                  label: f.sourcePath,
+                }))}
                 value={previewPath}
-                onChange={(e) => setPreviewPath(e.target.value)}
-                placeholder="docs/guide.md"
-              />
-              <Button type="button" variant="secondary" onClick={() => void loadPreview()}>
-                加载预览
+                onValueChange={(v) => v && setPreviewPath(v)}
+                disabled={filesForLang.length === 0}
+              >
+                <SelectTrigger className="w-full min-w-0 sm:flex-1">
+                  <SelectValue placeholder="选择文件" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filesForLang.map((f) => (
+                    <SelectItem key={f.sourcePath} value={f.sourcePath}>
+                      {f.sourcePath}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!previewPath || previewLoading}
+                onClick={() => void loadPreview()}
+              >
+                {previewLoading ? "加载中…" : "加载预览"}
               </Button>
             </div>
             <Textarea
               readOnly
               className="min-h-64 font-mono text-xs"
               value={previewContent}
-              placeholder="选择语言与路径后加载译文…"
+              placeholder={
+                filesForLang.length === 0
+                  ? "该语言暂无可预览的文件"
+                  : "选择语言与文件后加载译文…"
+              }
             />
           </CardContent>
         </Card>

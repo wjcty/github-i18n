@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowClockwise, ArrowLeft, FloppyDisk } from "@phosphor-icons/react";
+import { ArrowClockwise, FloppyDisk } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   DashboardShell,
@@ -11,7 +11,6 @@ import {
 import { FileTreePicker } from "@/components/repos/file-tree-picker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { LinkButton } from "@/components/ui/link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -139,17 +138,12 @@ export default function RepoConfigPage() {
       <PageTitle
         title="翻译配置"
         description={repo.fullName}
+        backHref={`/repo/${id}`}
         actions={
-          <>
-            <LinkButton variant="outline" size="sm" href={`/repo/${id}`}>
-              <ArrowLeft className="size-4" aria-hidden />
-              返回
-            </LinkButton>
-            <Button size="sm" disabled={saving} onClick={() => void save()}>
-              <FloppyDisk className="size-4" weight="fill" aria-hidden />
-              保存
-            </Button>
-          </>
+          <Button size="sm" disabled={saving} onClick={() => void save()}>
+            <FloppyDisk className="size-4" weight="fill" aria-hidden />
+            保存
+          </Button>
         }
       />
 

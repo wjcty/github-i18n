@@ -12,6 +12,7 @@ import type {
   RepoTree,
   TaskCreated,
   TaskDetail,
+  TaskFiles,
   TaskPreview,
   UserSettings,
 } from "./types";
@@ -83,6 +84,8 @@ export const reposApi = {
 
 export const tasksApi = {
   get: (taskId: string) => apiFetch<TaskDetail>(`/api/tasks/${taskId}`),
+  files: (taskId: string) =>
+    apiFetch<TaskFiles>(`/api/tasks/${taskId}/files`),
   preview: (taskId: string, lang: string, path: string) =>
     apiFetch<TaskPreview>(
       `/api/tasks/${taskId}/preview?lang=${encodeURIComponent(lang)}&path=${encodeURIComponent(path)}`,

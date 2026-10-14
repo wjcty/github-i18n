@@ -361,13 +361,11 @@ export async function processTranslationTask(taskId: string) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // 不在这里置为 failed：是否失败由 worker 根据剩余重试次数决定，
+    // 否则自动重试期间前端会误报“翻译失败”。
     await prisma.translationTask.update({
       where: { id: taskId },
-      data: {
-        status: "failed",
-        errorMessage: message.slice(0, 4000),
-        finishedAt: new Date(),
-      },
+      data: { errorMessage: message.slice(0, 4000), currentFile: null },
     });
     throw err;
   }

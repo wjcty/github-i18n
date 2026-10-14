@@ -46,6 +46,23 @@ export async function completeJob(jobId: string) {
   });
 }
 
+const MAX_ATTEMPTS = 3;
+
+/**
+ * 一次尝试失败后更新任务状态：
+ * - 还会自动重试 → 回到 pending，前端继续显示“排队中/执行中”，不误报失败；
+ * - 重试次数用尽 → 置为 failed 并记录完成时间。
+ */
+export async function reflectTaskFailure(taskId: string, attempts: number) {
+  const willRetry = attempts < MAX_ATTEMPTS;
+  await prisma.translationTask.update({
+    where: { id: taskId },
+    data: willRetry
+      ? { status: "pending", currentFile: null, finishedAt: null }
+      : { status: "failed", currentFile: null, finishedAt: new Date() },
+  });
+}
+
 export async function failJob(jobId: string, retryDelayMs: number) {
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) return;

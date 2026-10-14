@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowSquareOut, Gear, Play } from "@phosphor-icons/react";
+import { ArrowSquareOut, Eye, Gear, Play } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   DashboardShell,
@@ -88,6 +88,7 @@ export default function RepoDetailPage() {
       <PageTitle
         title={repo.fullName}
         description={`默认分支 ${repo.defaultBranch} · 基准语言 ${repo.baseLanguage}`}
+        backHref="/dashboard"
         actions={
           <>
             <LinkButton variant="outline" size="sm" href={`/repo/${id}/config`}>
@@ -160,21 +161,21 @@ export default function RepoDetailPage() {
       </div>
 
       <h2 className="mb-3 mt-8 font-mono text-lg font-semibold">任务历史</h2>
-      <div className="overflow-hidden rounded-xl border border-border">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
               <TableHead>时间</TableHead>
               <TableHead>模式</TableHead>
               <TableHead className="hidden sm:table-cell">触发</TableHead>
               <TableHead>状态</TableHead>
-              <TableHead className="text-right">查看</TableHead>
+              <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {repo.recentTasks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                   暂无任务
                 </TableCell>
               </TableRow>
@@ -184,13 +185,20 @@ export default function RepoDetailPage() {
                   <TableCell className="text-xs sm:text-sm">
                     {new Date(t.createdAt).toLocaleString()}
                   </TableCell>
-                  <TableCell>{t.mode}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{t.trigger}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex rounded-md bg-muted px-2 py-0.5 font-mono text-xs">
+                      {t.mode}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
+                    {t.trigger}
+                  </TableCell>
                   <TableCell>
                     <TaskStatusBadge status={t.status} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <LinkButton size="sm" variant="ghost" href={`/task/${t.id}`}>
+                    <LinkButton size="sm" variant="outline" href={`/task/${t.id}`}>
+                      <Eye className="size-4" aria-hidden />
                       详情
                     </LinkButton>
                   </TableCell>

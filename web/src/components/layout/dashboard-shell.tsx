@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { FolderGit2, Home, Settings } from "lucide-react";
+import { ArrowLeft, FolderGit2, Home, Settings } from "lucide-react";
 import { SiteHeader } from "./site-header";
+import { LinkButton } from "@/components/ui/link-button";
 
 const nav = [
   { href: "/dashboard", label: "仓库", icon: Home },
@@ -36,20 +37,38 @@ export function PageTitle({
   title,
   description,
   actions,
+  backHref,
+  backLabel = "返回",
 }: {
   title: string;
   description?: string;
   actions?: React.ReactNode;
+  backHref?: string;
+  backLabel?: string;
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <h1 className="font-mono text-xl font-semibold tracking-tight break-all sm:text-2xl">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-1 text-sm break-all text-muted-foreground">{description}</p>
+      <div className="flex min-w-0 items-start gap-2">
+        {backHref ? (
+          <LinkButton
+            variant="ghost"
+            size="icon-sm"
+            href={backHref}
+            aria-label={backLabel}
+            title={backLabel}
+            className="mt-0.5 shrink-0"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+          </LinkButton>
         ) : null}
+        <div className="min-w-0">
+          <h1 className="font-mono text-xl font-semibold tracking-tight break-all sm:text-2xl">
+            {title}
+          </h1>
+          {description ? (
+            <p className="mt-1 text-sm break-all text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>

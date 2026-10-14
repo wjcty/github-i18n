@@ -124,6 +124,7 @@ export default function SettingsPage() {
       <PageTitle
         title="设置"
         description="OpenRouter 密钥、默认模型与账户管理"
+        backHref="/dashboard"
         actions={
           <Button disabled={saving} onClick={() => void save()}>
             保存

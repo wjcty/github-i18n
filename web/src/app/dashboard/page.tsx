@@ -9,6 +9,7 @@ import {
   PageTitle,
 } from "@/components/layout/dashboard-shell";
 import { ImportRepoDialog } from "@/components/repos/import-repo-dialog";
+import { InstallPromptDialog } from "@/components/repos/install-prompt-dialog";
 import { TranslationStatusBadge } from "@/components/repos/translation-status-badge";
 import { AnchorButton, LinkButton } from "@/components/ui/link-button";
 import {
@@ -46,6 +47,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardShell>
+      <InstallPromptDialog />
       <PageTitle
         title="仪表盘"
         description="管理已导入仓库，配置翻译并查看状态。"

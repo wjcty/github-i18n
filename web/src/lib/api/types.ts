@@ -156,6 +156,17 @@ export type TaskCreated = {
   retryCount?: number;
 };
 
+export type TaskFile = {
+  sourcePath: string;
+  items: { lang: string; translatedPath: string }[];
+};
+
+export type TaskFiles = {
+  files: TaskFile[];
+  count: number;
+  finishedAt: string | null;
+};
+
 export type TaskPreview = {
   lang: string;
   sourcePath: string;
