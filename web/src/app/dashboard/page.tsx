@@ -59,7 +59,46 @@ export default function DashboardPage() {
       ) : items.length === 0 ? (
         <EmptyReposHint />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <>
+        <ul className="space-y-3 md:hidden">
+          {items.map((repo) => (
+            <li
+              key={repo.id}
+              className="rounded-xl border border-border bg-card p-4"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 font-mono text-sm font-medium break-all">
+                  {repo.fullName}
+                </p>
+                <TranslationStatusBadge status={repo.translationStatus} />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                目标语言：
+                {repo.targetLanguages.length
+                  ? repo.targetLanguages.join(", ")
+                  : "未配置"}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <LinkButton size="sm" className="flex-1" href={`/repo/${repo.id}`}>
+                  详情
+                </LinkButton>
+                {repo.lastPrUrl ? (
+                  <AnchorButton
+                    variant="outline"
+                    size="sm"
+                    href={repo.lastPrUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ArrowSquareOut className="size-4" aria-hidden />
+                    PR
+                  </AnchorButton>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-hidden rounded-xl border border-border md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -107,6 +146,7 @@ export default function DashboardPage() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
     </DashboardShell>
   );

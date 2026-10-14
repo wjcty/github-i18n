@@ -6,7 +6,9 @@ import {
 import { SiteHeader } from "@/components/layout/site-header";
 import { HomeHeroActions } from "@/components/auth/home-hero-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { metaApi } from "@/lib/api";
+import { AUTH_NETWORK_ERROR_MESSAGE, authErrorLabel } from "@/lib/labels";
 
 const features = [
   {
@@ -29,7 +31,7 @@ const features = [
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const sp = await searchParams;
   let installUrl = "";
@@ -41,6 +43,9 @@ export default async function HomePage({
   }
 
   const callback = sp.callbackUrl ?? "/dashboard";
+  const authError = sp.error
+    ? (authErrorLabel[sp.error] ?? AUTH_NETWORK_ERROR_MESSAGE)
+    : "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,21 +59,27 @@ export default async function HomePage({
           }}
           aria-hidden
         />
-        <div className="relative mx-auto max-w-6xl px-4 py-20 md:px-6 md:py-28">
+        <div className="relative mx-auto max-w-6xl px-4 py-12 sm:py-20 md:px-6 md:py-28">
+          {authError ? (
+            <Alert variant="destructive" className="mb-6 max-w-xl">
+              <AlertTitle>登录失败</AlertTitle>
+              <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+          ) : null}
           <p className="font-mono text-sm font-medium text-primary">
             零配置 · 一键翻译
           </p>
-          <h1 className="mt-3 max-w-2xl font-mono text-4xl font-bold tracking-tight md:text-5xl">
+          <h1 className="mt-3 max-w-2xl font-mono text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             让你的 GitHub 项目走向全球
           </h1>
-          <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+          <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
             GitHub-i18n 帮助开源维护者将文档自动翻译为多种语言，支持增量同步与
             OpenRouter 多模型。
           </p>
           <HomeHeroActions installUrl={installUrl} callbackUrl={callback} />
         </div>
       </section>
-      <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:py-16 md:px-6">
         <div className="grid gap-6 md:grid-cols-3">
           {features.map(({ title, desc, icon: Icon }) => (
             <Card key={title} className="border-border/80 shadow-sm">

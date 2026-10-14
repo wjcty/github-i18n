@@ -32,10 +32,14 @@ export const authApi = {
 
 export const installationsApi = {
   list: () => apiFetch<{ items: Installation[] }>("/api/installations"),
-  repos: (installationId: number, params?: { page?: number; q?: string }) => {
+  repos: (
+    installationId: number,
+    params?: { page?: number; q?: string; all?: boolean },
+  ) => {
     const sp = new URLSearchParams();
     if (params?.page) sp.set("page", String(params.page));
     if (params?.q) sp.set("q", params.q);
+    if (params?.all) sp.set("all", "true");
     const qs = sp.toString();
     return apiFetch<Paginated<InstallRepoItem>>(
       `/api/installations/${installationId}/repos${qs ? `?${qs}` : ""}`,

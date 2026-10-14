@@ -118,7 +118,7 @@ export default function TaskDetailPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Progress value={pct} className="h-2" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm break-all text-muted-foreground">
             {progress?.doneFiles ?? task.progress.doneFiles} /{" "}
             {progress?.totalFiles ?? task.progress.totalFiles} 文件
             {(progress?.currentFile ?? task.progress.currentFile)
@@ -128,7 +128,7 @@ export default function TaskDetailPage() {
           {task.status === "failed" && task.errorMessage ? (
             <Alert variant="destructive">
               <AlertTitle>任务失败</AlertTitle>
-              <AlertDescription>{task.errorMessage}</AlertDescription>
+              <AlertDescription className="break-all">{task.errorMessage}</AlertDescription>
             </Alert>
           ) : null}
           {task.status === "skipped" && task.skipReason ? (
@@ -153,7 +153,7 @@ export default function TaskDetailPage() {
                 value={previewLang}
                 onValueChange={(v) => v && setPreviewLang(v)}
               >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="语言" />
                 </SelectTrigger>
                 <SelectContent>
@@ -165,7 +165,7 @@ export default function TaskDetailPage() {
                 </SelectContent>
               </Select>
               <input
-                className="flex h-9 min-w-[200px] flex-1 rounded-md border border-input bg-transparent px-3 font-mono text-sm"
+                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 font-mono text-sm sm:w-auto sm:flex-1"
                 value={previewPath}
                 onChange={(e) => setPreviewPath(e.target.value)}
                 placeholder="docs/guide.md"

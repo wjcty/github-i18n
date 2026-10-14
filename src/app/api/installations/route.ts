@@ -21,7 +21,7 @@ export async function GET() {
   const items = [];
   for (const inst of data.installations) {
     if (!inst.id) continue;
-    await prisma.installation.upsert({
+    const record = await prisma.installation.upsert({
       where: { installationId: inst.id },
       create: {
         installationId: inst.id,
@@ -34,6 +34,14 @@ export async function GET() {
         accountType: installationAccountType(inst.account),
         repositorySelection: inst.repository_selection ?? null,
       },
+    });
+    await prisma.repository.updateMany({
+      where: {
+        userId: auth.user.id,
+        owner: installationAccountLogin(inst.account),
+        installationId: { not: inst.id },
+      },
+      data: { installationId: inst.id, installationRecordId: record.id, treeCachedAt: null },
     });
     items.push({
       installationId: inst.id,

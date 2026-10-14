@@ -43,7 +43,24 @@ async function proxy(req: NextRequest, path: string[]) {
     init.body = await req.arrayBuffer();
   }
 
-  const upstream = await fetch(dest, init);
+  let upstream: Response;
+  try {
+    upstream = await fetch(dest, init);
+  } catch (err) {
+    console.error("[proxy] upstream request failed:", dest, err);
+    if (path[0] === "auth" && req.method === "GET" && path[1] !== "session" && path[1] !== "csrf") {
+      return Response.redirect(new URL("/?error=Network", incoming.origin), 302);
+    }
+    return Response.json(
+      {
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "服务暂时不可用，请检查网络或稍后再试",
+        },
+      },
+      { status: 502 },
+    );
+  }
   const outHeaders = new Headers();
   upstream.headers.forEach((value, key) => {
     if (HOP_BY_HOP.has(key.toLowerCase())) return;

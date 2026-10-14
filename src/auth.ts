@@ -158,6 +158,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
+  pages: {
+    signIn: "/",
+    error: "/",
+  },
   session: { strategy: "database" },
   trustHost: true,
   debug: process.env.AUTH_DEBUG === "1",

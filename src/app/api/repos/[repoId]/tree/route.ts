@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, requireRepoAccess } from "@/lib/auth-session";
-import { getInstallationOctokit } from "@/lib/github/app";
+import { AppNotInstalledError, getRepoOctokit } from "@/lib/github/repo-octokit";
 import { fetchRepoTree } from "@/lib/github/tree-fetch";
 import { prisma } from "@/lib/db";
 import { apiError } from "@/lib/api-error";
@@ -19,17 +19,20 @@ export async function GET(request: NextRequest, { params }: Params) {
   const repo = access.repo;
 
   try {
-    const octokit = await getInstallationOctokit(repo.installationId);
+    const previousInstallationId = repo.installationId;
+    const octokit = await getRepoOctokit(repo);
     const tree = await fetchRepoTree(
       octokit,
       repo.owner,
       repo.name,
       repo.defaultBranch,
-      { treeCache: repo.treeCache, treeCachedAt: repo.treeCachedAt },
+      repo.installationId === previousInstallationId
+        ? { treeCache: repo.treeCache, treeCachedAt: repo.treeCachedAt }
+        : { treeCache: null, treeCachedAt: null },
       forceRefresh,
     );
 
-    if (forceRefresh || !repo.treeCachedAt) {
+    if (tree.cachedAt.getTime() !== repo.treeCachedAt?.getTime()) {
       await prisma.repository.update({
         where: { id: repo.id },
         data: {
@@ -52,6 +55,9 @@ export async function GET(request: NextRequest, { params }: Params) {
       nodes: tree.nodes,
     });
   } catch (e) {
+    if (e instanceof AppNotInstalledError) {
+      return apiError(403, "FORBIDDEN", e.message);
+    }
     return apiError(
       500,
       "INTERNAL_ERROR",

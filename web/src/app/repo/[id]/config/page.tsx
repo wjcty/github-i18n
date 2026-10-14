@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, FloppyDisk } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowLeft, FloppyDisk } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   DashboardShell,
@@ -40,19 +40,37 @@ export default function RepoConfigPage() {
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [treeLoading, setTreeLoading] = useState(false);
+  const [treeError, setTreeError] = useState("");
+
+  const loadTree = useCallback(
+    async (refresh = false) => {
+      if (!id) return;
+      setTreeLoading(true);
+      setTreeError("");
+      try {
+        setTree(await reposApi.tree(id, refresh));
+      } catch (e) {
+        setTree(null);
+        setTreeError(e instanceof ApiError ? e.message : "加载文件树失败");
+      } finally {
+        setTreeLoading(false);
+      }
+    },
+    [id],
+  );
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    void loadTree();
     try {
-      const [langs, detail, fileTree] = await Promise.all([
+      const [langs, detail] = await Promise.all([
         metaApi.languages(),
         reposApi.get(id),
-        reposApi.tree(id),
       ]);
       setLanguages(langs.languages);
       setRepo(detail);
-      setTree(fileTree);
       setBaseLanguage(detail.baseLanguage);
       setTargetLanguages(detail.targetLanguages);
       setIncludePaths(detail.scopeConfig?.includePaths ?? []);
@@ -63,7 +81,7 @@ export default function RepoConfigPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, loadTree]);
 
   useEffect(() => {
     void load();
@@ -144,10 +162,14 @@ export default function RepoConfigPage() {
             <div className="space-y-2">
               <Label>基准语言</Label>
               <Select
+                items={languages.map((l) => ({
+                  value: l.code,
+                  label: `${l.nativeName} (${l.code})`,
+                }))}
                 value={baseLanguage}
                 onValueChange={(v) => v && setBaseLanguage(v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full sm:w-72">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -216,10 +238,28 @@ export default function RepoConfigPage() {
       </div>
 
       <Card className="mt-6">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
           <CardTitle className="font-mono text-base">翻译范围</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={treeLoading}
+            onClick={() => void loadTree(true)}
+          >
+            <ArrowClockwise
+              className={`size-4 ${treeLoading ? "animate-spin" : ""}`}
+              aria-hidden
+            />
+            刷新文件树
+          </Button>
         </CardHeader>
         <CardContent>
+          {treeError ? (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{treeError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {treeLoading && !tree ? <Skeleton className="h-72 w-full" /> : null}
           {tree?.empty || tree?.nodes.length === 0 ? (
             <Alert className="mb-4">
               <AlertDescription>

@@ -7,6 +7,13 @@ import { parsePagination } from "@/lib/pagination";
 
 type Params = { params: Promise<{ installationId: string }> };
 
+type InstallationRepo = {
+  id: number;
+  full_name: string;
+  default_branch?: string;
+  private: boolean;
+};
+
 export async function GET(request: NextRequest, { params }: Params) {
   const auth = await requireSession();
   if (auth.error) return auth.error;
@@ -21,15 +28,15 @@ export async function GET(request: NextRequest, { params }: Params) {
     return apiError(403, "FORBIDDEN", "GitHub token not available");
   }
 
-  const { page, pageSize, skip } = parsePagination(request.nextUrl.searchParams);
-  const q = request.nextUrl.searchParams.get("q")?.toLowerCase() ?? "";
+  const sp = request.nextUrl.searchParams;
+  const all = sp.get("all") === "true";
+  const { page, pageSize, skip } = parsePagination(sp);
+  const q = sp.get("q")?.toLowerCase() ?? "";
 
-  const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
-    installation_id: installationId,
-    per_page: 100,
-  });
-
-  let repos = data.repositories ?? [];
+  let repos = (await octokit.paginate(
+    "GET /user/installations/{installation_id}/repositories",
+    { installation_id: installationId, per_page: 100 },
+  )) as unknown as InstallationRepo[];
   if (q) repos = repos.filter((r) => r.full_name?.toLowerCase().includes(q));
 
   const imported = await prisma.repository.findMany({
@@ -39,7 +46,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const importedMap = new Map(imported.map((r) => [r.githubRepoId, r.id]));
 
   const total = repos.length;
-  const slice = repos.slice(skip, skip + pageSize);
+  const slice = all ? repos : repos.slice(skip, skip + pageSize);
 
   return NextResponse.json({
     items: slice.map((r) => ({
@@ -50,8 +57,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       alreadyImported: importedMap.has(r.id),
       platformRepoId: importedMap.get(r.id) ?? null,
     })),
-    page,
-    pageSize,
+    page: all ? 1 : page,
+    pageSize: all ? total : pageSize,
     total,
   });
 }

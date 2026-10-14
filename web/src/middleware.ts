@@ -10,12 +10,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const origin = request.nextUrl.origin;
-  const sessionRes = await fetch(`${origin}/api/auth/session`, {
-    headers: { cookie: request.headers.get("cookie") ?? "" },
-  });
-
   let session: { user?: { id?: string } } | null = null;
   try {
+    const sessionRes = await fetch(`${origin}/api/auth/session`, {
+      headers: { cookie: request.headers.get("cookie") ?? "" },
+    });
     session = (await sessionRes.json()) as { user?: { id?: string } };
   } catch {
     session = null;

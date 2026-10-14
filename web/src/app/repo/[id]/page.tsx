@@ -166,7 +166,7 @@ export default function RepoDetailPage() {
             <TableRow>
               <TableHead>时间</TableHead>
               <TableHead>模式</TableHead>
-              <TableHead>触发</TableHead>
+              <TableHead className="hidden sm:table-cell">触发</TableHead>
               <TableHead>状态</TableHead>
               <TableHead className="text-right">查看</TableHead>
             </TableRow>
@@ -181,11 +181,11 @@ export default function RepoDetailPage() {
             ) : (
               repo.recentTasks.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-xs sm:text-sm">
                     {new Date(t.createdAt).toLocaleString()}
                   </TableCell>
                   <TableCell>{t.mode}</TableCell>
-                  <TableCell>{t.trigger}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{t.trigger}</TableCell>
                   <TableCell>
                     <TaskStatusBadge status={t.status} />
                   </TableCell>

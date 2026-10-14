@@ -1,10 +1,12 @@
 import type { Octokit } from "octokit";
 import { prisma } from "@/lib/db";
-import { getInstallationOctokit } from "@/lib/github/app";
+import { getRepoOctokit } from "@/lib/github/repo-octokit";
+import { isEmptyRepoError } from "@/lib/github/tree-fetch";
 import { openRouterChat, resolveApiKeyForUser } from "@/lib/openrouter";
 import { parseJsonArray, parseScopeConfig } from "@/lib/repos/mapper";
 import { filterTranslatablePaths } from "@/lib/translation/scope";
 import { translatedPath, isMarkdown } from "@/lib/translation/paths";
+import { buildEnglishPathMap } from "@/lib/translation/filenames";
 import { upsertReadmeTranslationBlock } from "@/lib/translation/readme-links";
 function decodeContent(content: string, encoding: string): string {
   if (encoding === "base64") {
@@ -100,7 +102,7 @@ export async function processTranslationTask(taskId: string) {
   });
 
   try {
-    const octokit = await getInstallationOctokit(repo.installationId);
+    const octokit = await getRepoOctokit(repo);
     const { data: repoMeta } = await octokit.rest.repos.get({ owner, repo: name });
     const defaultBranch = repoMeta.default_branch;
     let headSha: string;
@@ -110,13 +112,7 @@ export async function processTranslationTask(taskId: string) {
         (await octokit.rest.repos.getBranch({ owner, repo: name, branch: defaultBranch }))
           .data.commit.sha;
     } catch (e) {
-      const status = (e as { status?: number }).status;
-      const message = e instanceof Error ? e.message : "";
-      const emptyRepo =
-        status === 404 ||
-        status === 409 ||
-        /Branch not found|Git Repository is empty/i.test(message);
-      if (emptyRepo) {
+      if (isEmptyRepoError(e)) {
         await prisma.translationTask.update({
           where: { id: taskId },
           data: {
@@ -151,7 +147,7 @@ export async function processTranslationTask(taskId: string) {
     const files = filterTranslatablePaths(
       candidatePaths,
       scope,
-      repo.ignoreFileContent,
+      repo.ignoreFileContent ?? "",
     );
 
     if (files.length === 0) {
@@ -171,6 +167,12 @@ export async function processTranslationTask(taskId: string) {
 
     const { key, source, model } = await resolveApiKeyForUser(user.id);
     const headBranch = branchName(repo.id, taskId);
+    const englishPaths = await buildEnglishPathMap({
+      repositoryId: repo.id,
+      sourcePaths: files,
+      apiKey: key,
+      model,
+    });
 
     await prisma.translationTask.update({
       where: { id: taskId },
@@ -201,7 +203,7 @@ export async function processTranslationTask(taskId: string) {
           sourceText,
         );
 
-        const outPath = translatedPath(lang, filePath);
+        const outPath = translatedPath(lang, englishPaths.get(filePath) ?? filePath);
         fileOutputs.push({ path: outPath, content: translated });
 
         await prisma.taskPreview.upsert({

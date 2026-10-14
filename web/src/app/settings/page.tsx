@@ -140,10 +140,14 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label>计费模式</Label>
               <Select
+                items={[
+                  { value: "BYOK", label: "自带 OpenRouter Key" },
+                  { value: "PLATFORM", label: "平台托管配额" },
+                ]}
                 value={billingMode}
                 onValueChange={(v) => v && setBillingMode(v as BillingMode)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -155,10 +159,11 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label>默认模型</Label>
               <Select
+                items={models.map((m) => ({ value: m.id, label: m.name }))}
                 value={defaultModelId}
                 onValueChange={(v) => v && setDefaultModelId(v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

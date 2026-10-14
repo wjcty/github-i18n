@@ -4,6 +4,14 @@ import type { TreeNode } from "@/types/api";
 
 const CACHE_MS = 5 * 60 * 1000;
 
+/** 仅空仓库/默认分支不存在才算空；token 生成失败等 404 必须抛出 */
+export function isEmptyRepoError(e: unknown): boolean {
+  const status = (e as { status?: number }).status;
+  const message = e instanceof Error ? e.message : "";
+  if (status === 409) return true;
+  return /Branch not found|Git Repository is empty/i.test(message);
+}
+
 export async function fetchRepoTree(
   octokit: Octokit,
   owner: string,
@@ -18,20 +26,19 @@ export async function fetchRepoTree(
   cachedAt: Date;
 }> {
   const now = new Date();
+  const c = cached.treeCache as
+    | { nodes?: TreeNode[]; truncated?: boolean; commitSha?: string }
+    | null;
   if (
     !forceRefresh &&
     cached.treeCachedAt &&
-    cached.treeCache &&
+    c?.commitSha &&
+    c.nodes?.length &&
     now.getTime() - cached.treeCachedAt.getTime() < CACHE_MS
   ) {
-    const c = cached.treeCache as {
-      nodes: TreeNode[];
-      truncated: boolean;
-      commitSha: string;
-    };
     return {
       nodes: c.nodes,
-      truncated: c.truncated,
+      truncated: Boolean(c.truncated),
       commitSha: c.commitSha,
       cachedAt: cached.treeCachedAt,
     };
@@ -46,13 +53,7 @@ export async function fetchRepoTree(
     });
     commitSha = branch.commit.sha;
   } catch (e) {
-    const status = (e as { status?: number }).status;
-    const message = e instanceof Error ? e.message : "";
-    const emptyRepo =
-      status === 404 ||
-      status === 409 ||
-      /Branch not found|Git Repository is empty/i.test(message);
-    if (emptyRepo) {
+    if (isEmptyRepoError(e)) {
       return {
         nodes: [],
         truncated: false,

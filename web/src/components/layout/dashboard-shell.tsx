@@ -11,7 +11,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6 md:px-6">
+      <div className="mx-auto flex max-w-6xl gap-6 px-3 py-4 sm:px-4 sm:py-6 md:px-6">
         <aside className="hidden w-44 shrink-0 md:block">
           <nav className="sticky top-20 space-y-1">
             {nav.map(({ href, label, icon: Icon }) => (
@@ -43,10 +43,12 @@ export function PageTitle({
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="font-mono text-2xl font-semibold tracking-tight">{title}</h1>
+      <div className="min-w-0">
+        <h1 className="font-mono text-xl font-semibold tracking-tight break-all sm:text-2xl">
+          {title}
+        </h1>
         {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 text-sm break-all text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
