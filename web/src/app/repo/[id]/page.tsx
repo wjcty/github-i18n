@@ -29,14 +29,16 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
-import { reposApi } from "@/lib/api";
-import type { RepoDetail } from "@/lib/api/types";
+import { metaApi, reposApi } from "@/lib/api";
+import type { LanguageMeta, RepoDetail } from "@/lib/api/types";
+import { formatLanguageCodeLabel, formatLanguageList } from "@/lib/labels";
 
 export default function RepoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: session } = useSession();
   const [repo, setRepo] = useState<RepoDetail | null>(null);
+  const [languages, setLanguages] = useState<LanguageMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
 
@@ -44,7 +46,12 @@ export default function RepoDetailPage() {
     if (!id) return;
     setLoading(true);
     try {
-      setRepo(await reposApi.get(id));
+      const [detail, langs] = await Promise.all([
+        reposApi.get(id),
+        metaApi.languages(),
+      ]);
+      setRepo(detail);
+      setLanguages(langs.languages);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "加载失败");
     } finally {
@@ -92,7 +99,7 @@ export default function RepoDetailPage() {
     <DashboardShell>
       <PageTitle
         title={repo.fullName}
-        description={`默认分支 ${repo.defaultBranch} · 基准语言 ${repo.baseLanguage}`}
+        description={`默认分支 ${repo.defaultBranch} · 基准语言 ${formatLanguageCodeLabel(repo.baseLanguage, languages)}`}
         backHref="/dashboard"
         actions={
           <>
@@ -137,7 +144,28 @@ export default function RepoDetailPage() {
           <CardContent className="space-y-2 text-sm">
             <p>
               <span className="text-muted-foreground">目标语言：</span>
-              {repo.targetLanguages.join(", ") || "未设置"}
+              {repo.targetLanguages.length ? (
+                <>
+                  <span className="sm:hidden">
+                    {formatLanguageList(
+                      repo.targetLanguages,
+                      languages,
+                      1,
+                      "、",
+                    )}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {formatLanguageList(
+                      repo.targetLanguages,
+                      languages,
+                      3,
+                      "、",
+                    )}
+                  </span>
+                </>
+              ) : (
+                "未设置"
+              )}
             </p>
             <p>
               <span className="text-muted-foreground">自动同步：</span>

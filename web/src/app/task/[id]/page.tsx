@@ -29,14 +29,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskProgress } from "@/hooks/use-task-progress";
 import { ApiError } from "@/lib/api/client";
-import { tasksApi } from "@/lib/api";
-import type { TaskFile } from "@/lib/api/types";
-import { skipReasonLabel } from "@/lib/labels";
+import { metaApi, tasksApi } from "@/lib/api";
+import type { LanguageMeta, TaskFile } from "@/lib/api/types";
+import {
+  formatLanguageCodeLabel,
+  formatLanguageList,
+  skipReasonLabel,
+} from "@/lib/labels";
 
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { task, progress, refresh } = useTaskProgress(id);
   const [files, setFiles] = useState<TaskFile[]>([]);
+  const [languages, setLanguages] = useState<LanguageMeta[]>([]);
   const [previewLang, setPreviewLang] = useState("");
   const [previewPath, setPreviewPath] = useState("");
   const [previewContent, setPreviewContent] = useState("");
@@ -54,6 +59,13 @@ export default function TaskDetailPage() {
       setFiles([]);
     }
   }, [id]);
+
+  useEffect(() => {
+    void metaApi
+      .languages()
+      .then((data) => setLanguages(data.languages))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (terminal) void loadFiles();
@@ -203,13 +215,27 @@ export default function TaskDetailPage() {
               {files.map((f) => (
                 <li
                   key={f.sourcePath}
-                  className="flex items-start gap-2 px-4 py-2.5"
+                  className="flex items-start gap-2 px-4 py-2.5 sm:items-center"
                 >
                   <FileMdIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                   <div className="min-w-0">
                     <p className="truncate font-mono text-sm">{f.sourcePath}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {f.items.map((it) => it.lang).join(" · ")}
+                    
+                  </div>
+                  <div className="ml-4 min-w-0 shrink-0 text-xs text-muted-foreground">
+                    <p className="truncate sm:hidden">
+                      {formatLanguageList(
+                        f.items.map((it) => it.lang),
+                        languages,
+                        1,
+                      )}
+                    </p>
+                    <p className="hidden truncate sm:block">
+                      {formatLanguageList(
+                        f.items.map((it) => it.lang),
+                        languages,
+                        3,
+                      )}
                     </p>
                   </div>
                 </li>
@@ -225,23 +251,28 @@ export default function TaskDetailPage() {
             <CardTitle className="font-mono text-base">结果预览</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="shrink-0 text-sm">语言：</span>
               <Select
-                items={task.targetLanguages.map((l) => ({ value: l, label: l }))}
+                items={task.targetLanguages.map((l) => ({
+                  value: l,
+                  label: formatLanguageCodeLabel(l, languages),
+                }))}
                 value={previewLang}
                 onValueChange={(v) => v && setPreviewLang(v)}
               >
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full sm:w-52">
                   <SelectValue placeholder="语言" />
                 </SelectTrigger>
                 <SelectContent>
                   {task.targetLanguages.map((l) => (
                     <SelectItem key={l} value={l}>
-                      {l}
+                      {formatLanguageCodeLabel(l, languages)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <span className="shrink-0 text-sm">文件：</span>
               <Select
                 items={filesForLang.map((f) => ({
                   value: f.sourcePath,
@@ -265,6 +296,7 @@ export default function TaskDetailPage() {
               <Button
                 type="button"
                 variant="secondary"
+                className="shrink-0"
                 disabled={!previewPath || previewLoading}
                 onClick={() => void loadPreview()}
               >

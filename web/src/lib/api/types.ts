@@ -27,6 +27,7 @@ export type LanguageMeta = {
   code: string;
   name: string;
   nativeName: string;
+  zhName: string;
 };
 
 export type ModelMeta = {

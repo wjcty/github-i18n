@@ -78,9 +78,8 @@ export async function fetchRepoTree(
       type: t.type === "tree" ? ("tree" as const) : ("blob" as const),
     }));
 
-  const { nodes, truncated } = buildNestedTree(
-    entries.filter((e) => e.type === "blob").map((e) => ({ path: e.path, type: "blob" as const })),
-  );
+  // 保持 GitHub tree API 返回顺序；buildNestedTree 内只保留 .md
+  const { nodes, truncated } = buildNestedTree(entries);
 
   return {
     nodes,

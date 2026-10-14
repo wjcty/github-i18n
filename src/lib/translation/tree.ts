@@ -3,22 +3,28 @@ import { isMarkdown } from "@/lib/translation/paths";
 
 type FlatEntry = { path: string; type: "blob" | "tree" };
 
+/** 目录在前、文件在后，各组内保持原有相对顺序（与 GitHub 仓库浏览一致） */
+function finalizeSiblingOrder(nodes: TreeNode[]) {
+  const dirs = nodes.filter((n) => n.type === "dir");
+  const files = nodes.filter((n) => n.type === "file");
+  nodes.splice(0, nodes.length, ...dirs, ...files);
+  for (const n of dirs) {
+    if (n.children?.length) finalizeSiblingOrder(n.children);
+  }
+}
+
+/**
+ * 仅包含 Markdown 文件及其祖先目录。
+ * 兄弟节点顺序跟随 GitHub tree API 返回顺序（不再按字母重排）。
+ */
 export function buildNestedTree(entries: FlatEntry[]): {
   nodes: TreeNode[];
   truncated: boolean;
 } {
+  // 保留 API 原始顺序，只取 .md
   const files = entries
-    .filter((e) => e.type === "blob")
-    .map((e) => e.path)
-    .sort();
-
-  const dirSet = new Set<string>();
-  for (const f of files) {
-    const parts = f.split("/");
-    for (let i = 1; i < parts.length; i++) {
-      dirSet.add(parts.slice(0, i).join("/") + "/");
-    }
-  }
+    .filter((e) => e.type === "blob" && isMarkdown(e.path))
+    .map((e) => e.path);
 
   const root: TreeNode[] = [];
   const dirMap = new Map<string, TreeNode>();
@@ -45,15 +51,11 @@ export function buildNestedTree(entries: FlatEntry[]): {
     return node;
   }
 
-  for (const dir of [...dirSet].sort()) {
-    ensureDir(dir);
-  }
-
   for (const file of files) {
     const fileNode: TreeNode = {
       path: file,
       type: "file",
-      translatable: isMarkdown(file),
+      translatable: true,
     };
     const idx = file.lastIndexOf("/");
     if (idx === -1) {
@@ -64,16 +66,7 @@ export function buildNestedTree(entries: FlatEntry[]): {
     }
   }
 
-  const sortNodes = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => {
-      if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
-      return a.path.localeCompare(b.path);
-    });
-    for (const n of nodes) {
-      if (n.children) sortNodes(n.children);
-    }
-  };
-  sortNodes(root);
+  finalizeSiblingOrder(root);
 
   return { nodes: root, truncated: false };
 }

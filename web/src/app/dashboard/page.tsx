@@ -23,10 +23,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import { metaApi, reposApi } from "@/lib/api";
-import type { RepoListItem } from "@/lib/api/types";
+import type { LanguageMeta, RepoListItem } from "@/lib/api/types";
+import { formatLanguageList } from "@/lib/labels";
 
 export default function DashboardPage() {
   const [items, setItems] = useState<RepoListItem[]>([]);
+  const [languages, setLanguages] = useState<LanguageMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [appSlug, setAppSlug] = useState("GitHub App");
 
@@ -52,6 +54,10 @@ export default function DashboardPage() {
       .then((app) => {
         if (app.githubAppSlug) setAppSlug(app.githubAppSlug);
       })
+      .catch(() => undefined);
+    void metaApi
+      .languages()
+      .then((data) => setLanguages(data.languages))
       .catch(() => undefined);
   }, []);
 
@@ -87,7 +93,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 目标语言：
                 {repo.targetLanguages.length
-                  ? repo.targetLanguages.join(", ")
+                  ? formatLanguageList(repo.targetLanguages, languages, 1, "、")
                   : "未配置"}
               </p>
               <div className="mt-3 flex gap-2">
@@ -128,7 +134,12 @@ export default function DashboardPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {repo.targetLanguages.length
-                      ? repo.targetLanguages.join(", ")
+                      ? formatLanguageList(
+                          repo.targetLanguages,
+                          languages,
+                          3,
+                          "、",
+                        )
                       : "未配置"}
                   </TableCell>
                   <TableCell>

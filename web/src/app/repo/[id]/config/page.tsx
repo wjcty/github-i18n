@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import { metaApi, reposApi } from "@/lib/api";
 import type { LanguageMeta, RepoDetail, RepoTree } from "@/lib/api/types";
+import { formatLanguageLabel } from "@/lib/labels";
 
 export default function RepoConfigPage() {
   const { id } = useParams<{ id: string }>();
@@ -158,7 +159,7 @@ export default function RepoConfigPage() {
               <Select
                 items={languages.map((l) => ({
                   value: l.code,
-                  label: `${l.nativeName} (${l.code})`,
+                  label: formatLanguageLabel(l),
                 }))}
                 value={baseLanguage}
                 onValueChange={(v) => v && setBaseLanguage(v)}
@@ -169,7 +170,7 @@ export default function RepoConfigPage() {
                 <SelectContent>
                   {languages.map((l) => (
                     <SelectItem key={l.code} value={l.code}>
-                      {l.nativeName} ({l.code})
+                      {formatLanguageLabel(l)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -193,7 +194,7 @@ export default function RepoConfigPage() {
                             : "border-border bg-background hover:bg-muted"
                         }`}
                       >
-                        {l.nativeName}
+                        {formatLanguageLabel(l)}
                       </button>
                     );
                   })}

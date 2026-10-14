@@ -6,7 +6,6 @@ import { openRouterChat, resolveApiKeyForUser } from "@/lib/openrouter";
 import { parseJsonArray, parseScopeConfig } from "@/lib/repos/mapper";
 import { filterTranslatablePaths } from "@/lib/translation/scope";
 import { translatedPath, isMarkdown } from "@/lib/translation/paths";
-import { buildEnglishPathMap } from "@/lib/translation/filenames";
 import { upsertReadmeTranslationBlock } from "@/lib/translation/readme-links";
 function decodeContent(content: string, encoding: string): string {
   if (encoding === "base64") {
@@ -167,12 +166,6 @@ export async function processTranslationTask(taskId: string) {
 
     const { key, source, model } = await resolveApiKeyForUser(user.id);
     const headBranch = branchName(repo.id, taskId);
-    const englishPaths = await buildEnglishPathMap({
-      repositoryId: repo.id,
-      sourcePaths: files,
-      apiKey: key,
-      model,
-    });
 
     await prisma.translationTask.update({
       where: { id: taskId },
@@ -203,7 +196,7 @@ export async function processTranslationTask(taskId: string) {
           sourceText,
         );
 
-        const outPath = translatedPath(lang, englishPaths.get(filePath) ?? filePath);
+        const outPath = translatedPath(lang, filePath);
         fileOutputs.push({ path: outPath, content: translated });
 
         await prisma.taskPreview.upsert({

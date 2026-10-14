@@ -1,4 +1,34 @@
-import type { TaskStatus, TranslationStatus } from "./api/types";
+import type { LanguageMeta, TaskStatus, TranslationStatus } from "./api/types";
+
+/** 中-英对译标签，如：法语（French）、简体中文(zh-CN) */
+export function formatLanguageLabel(
+  lang: Pick<LanguageMeta, "code" | "name" | "zhName">,
+): string {
+  if (lang.code.startsWith("zh")) {
+    return `${lang.zhName}(${lang.code})`;
+  }
+  return `${lang.zhName}（${lang.name}）`;
+}
+
+export function formatLanguageCodeLabel(
+  code: string,
+  languages: LanguageMeta[],
+): string {
+  const lang = languages.find((l) => l.code === code);
+  return lang ? formatLanguageLabel(lang) : code;
+}
+
+/** 截断语言列表：超出 limit 时末尾加省略号 */
+export function formatLanguageList(
+  codes: string[],
+  languages: LanguageMeta[],
+  limit: number,
+  separator = " · ",
+): string {
+  const labels = codes.map((code) => formatLanguageCodeLabel(code, languages));
+  if (labels.length <= limit) return labels.join(separator);
+  return `${labels.slice(0, limit).join(separator)}${separator}…`;
+}
 
 export const translationStatusLabel: Record<TranslationStatus, string> = {
   not_started: "未开始",
