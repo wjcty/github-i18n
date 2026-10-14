@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  ArrowSquareOut,
-  ArrowCounterClockwise,
-  FileMd,
+  ArrowSquareOutIcon,
+  ArrowCounterClockwiseIcon,
+  FileMdIcon,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
@@ -134,13 +134,13 @@ export default function TaskDetailPage() {
                 disabled={retrying}
                 onClick={() => void retry()}
               >
-                <ArrowCounterClockwise className="size-4" aria-hidden />
+                <ArrowCounterClockwiseIcon className="size-4" aria-hidden />
                 重试
               </Button>
             ) : null}
             {task.prUrl ? (
               <AnchorButton size="sm" href={task.prUrl} target="_blank" rel="noreferrer">
-                <ArrowSquareOut className="size-4" aria-hidden />
+                <ArrowSquareOutIcon className="size-4" aria-hidden />
                 打开 PR
               </AnchorButton>
             ) : null}
@@ -205,7 +205,7 @@ export default function TaskDetailPage() {
                   key={f.sourcePath}
                   className="flex items-start gap-2 px-4 py-2.5"
                 >
-                  <FileMd className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                  <FileMdIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                   <div className="min-w-0">
                     <p className="truncate font-mono text-sm">{f.sourcePath}</p>
                     <p className="truncate text-xs text-muted-foreground">

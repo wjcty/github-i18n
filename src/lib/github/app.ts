@@ -74,8 +74,10 @@ export async function githubAppInstallUrl(): Promise<string> {
 }
 
 export async function metaAppPayload() {
+  const slug = await resolveGitHubAppSlug();
   return {
     appName: "GitHub-i18n",
+    githubAppSlug: slug,
     githubAppInstallUrl: await githubAppInstallUrl(),
     appUrl: appUrl(),
   };

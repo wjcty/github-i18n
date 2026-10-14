@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowSquareOut, Eye, Gear, Play } from "@phosphor-icons/react";
+import {
+  ArrowSquareOutIcon,
+  EyeIcon,
+  GearIcon,
+  PlayIcon,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   DashboardShell,
@@ -92,7 +97,7 @@ export default function RepoDetailPage() {
         actions={
           <>
             <LinkButton variant="outline" size="sm" href={`/repo/${id}/config`}>
-              <Gear className="size-4" aria-hidden />
+              <GearIcon className="size-4" aria-hidden />
               翻译配置
             </LinkButton>
             <Button
@@ -100,7 +105,7 @@ export default function RepoDetailPage() {
               disabled={starting}
               onClick={() => void startTranslation("full")}
             >
-              <Play className="size-4" weight="fill" aria-hidden />
+              <PlayIcon className="size-4" weight="fill" aria-hidden />
               全量翻译
             </Button>
             <Button
@@ -152,7 +157,7 @@ export default function RepoDetailPage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                <ArrowSquareOut className="size-4" aria-hidden />
+                <ArrowSquareOutIcon className="size-4" aria-hidden />
                 最近 PR #{repo.lastPrNumber}
               </AnchorButton>
             ) : null}
@@ -198,7 +203,7 @@ export default function RepoDetailPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <LinkButton size="sm" variant="outline" href={`/task/${t.id}`}>
-                      <Eye className="size-4" aria-hidden />
+                      <EyeIcon className="size-4" aria-hidden />
                       详情
                     </LinkButton>
                   </TableCell>

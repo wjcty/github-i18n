@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowClockwise, FloppyDisk } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, FloppyDiskIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   DashboardShell,
@@ -141,7 +141,7 @@ export default function RepoConfigPage() {
         backHref={`/repo/${id}`}
         actions={
           <Button size="sm" disabled={saving} onClick={() => void save()}>
-            <FloppyDisk className="size-4" weight="fill" aria-hidden />
+            <FloppyDiskIcon className="size-4" weight="fill" aria-hidden />
             保存
           </Button>
         }
@@ -240,7 +240,7 @@ export default function RepoConfigPage() {
             disabled={treeLoading}
             onClick={() => void loadTree(true)}
           >
-            <ArrowClockwise
+            <ArrowClockwiseIcon
               className={`size-4 ${treeLoading ? "animate-spin" : ""}`}
               aria-hidden
             />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowClockwise, MagnifyingGlass, Plus } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiError } from "@/lib/api/client";
 import { installationsApi, metaApi, reposApi } from "@/lib/api";
 import type { Installation, InstallRepoItem } from "@/lib/api/types";
+import {
+  closeGitHubAppInstallPopup,
+  isGitHubAppInstallPopupClosed,
+  openGitHubAppInstallPopup,
+  type InstallPopupPhase,
+} from "@/lib/github-app-install";
+
+const POLL_MS = 2500;
+const POPUP_WATCH_MS = 800;
 
 /** 仓库列表按安装缓存在内存中；每次打开弹窗/回到页面时后台重新拉取，保证新建仓库能出现 */
 const repoCache = new Map<number, InstallRepoItem[]>();
@@ -44,6 +53,7 @@ function installationLabel(i: Installation): string {
 export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
   const [open, setOpen] = useState(false);
   const [installUrl, setInstallUrl] = useState("");
+  const [appSlug, setAppSlug] = useState("GitHub App");
   const [installations, setInstallations] = useState<Installation[] | null>(null);
   const [installationId, setInstallationId] = useState<string>("");
   const [query, setQuery] = useState("");
@@ -51,8 +61,25 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [importing, setImporting] = useState<number | null>(null);
+  const [phase, setPhase] = useState<InstallPopupPhase>("waiting");
   const installationIdRef = useRef(installationId);
+  const openRef = useRef(false);
+  const popupRef = useRef<Window | null>(null);
+  const popupOpenedRef = useRef(false);
+  const closingByUsRef = useRef(false);
   installationIdRef.current = installationId;
+  openRef.current = open;
+
+  const needsInstall = installations !== null && installations.length === 0;
+
+  const openInstallPopup = useCallback((url: string) => {
+    closingByUsRef.current = false;
+    const popup = openGitHubAppInstallPopup(url);
+    const blocked = !popup || popup.closed;
+    popupRef.current = blocked ? null : popup;
+    setPhase(blocked ? "blocked" : "waiting");
+    return !blocked;
+  }, []);
 
   const loadInstallations = useCallback(async () => {
     try {
@@ -65,11 +92,13 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
             ? String(items[0].installationId)
             : "",
       );
+      return items;
     } catch (e) {
       setInstallations((prev) => prev ?? []);
-      toast.error(e instanceof ApiError ? e.message : "加载 GitHub App 安装信息失败");
+      toast.error(e instanceof ApiError ? e.message : `加载 ${appSlug} 安装信息失败`);
+      return [];
     }
-  }, []);
+  }, [appSlug]);
 
   const loadRepos = useCallback(async (id: number) => {
     const cached = repoCache.get(id);
@@ -88,17 +117,32 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
     }
   }, []);
 
-  const refreshAll = useCallback(async () => {
-    await loadInstallations();
-    const id = Number(installationIdRef.current);
-    if (id) await loadRepos(id);
-  }, [loadInstallations, loadRepos]);
+  const closeDialog = useCallback(() => {
+    closingByUsRef.current = true;
+    closeGitHubAppInstallPopup(popupRef.current);
+    popupRef.current = null;
+    popupOpenedRef.current = false;
+    setPhase("waiting");
+    setOpen(false);
+    openRef.current = false;
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      closingByUsRef.current = true;
+      closeGitHubAppInstallPopup(popupRef.current);
+      popupRef.current = null;
+      popupOpenedRef.current = false;
+      setPhase("waiting");
+      return;
+    }
+
     void metaApi
       .app()
-      .then((app) => setInstallUrl(app.githubAppInstallUrl))
+      .then((app) => {
+        setInstallUrl(app.githubAppInstallUrl);
+        if (app.githubAppSlug) setAppSlug(app.githubAppSlug);
+      })
       .catch(() => undefined);
     void loadInstallations();
   }, [open, loadInstallations]);
@@ -108,19 +152,79 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
     void loadRepos(Number(installationId));
   }, [open, installationId, loadRepos]);
 
-  // 用户在新标签页安装 App / 新建仓库后切回来时自动刷新
+  // 未安装时：自动打开安装小窗口，并轮询；装好后关闭导入弹窗
   useEffect(() => {
-    if (!open) return;
+    if (!open || !needsInstall) return;
+
+    if (installUrl && !popupOpenedRef.current) {
+      popupOpenedRef.current = true;
+      openInstallPopup(installUrl);
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tick = async () => {
+      try {
+        const { items } = await installationsApi.list();
+        if (cancelled || !openRef.current) return;
+        if (items.length > 0) {
+          setInstallations(items);
+          setInstallationId(String(items[0].installationId));
+          closingByUsRef.current = true;
+          closeGitHubAppInstallPopup(popupRef.current);
+          popupRef.current = null;
+          popupOpenedRef.current = false;
+          toast.success(`「${appSlug}」已安装`);
+          closeDialog();
+          return;
+        }
+      } catch {
+        /* keep polling */
+      }
+      if (!cancelled && openRef.current) {
+        timer = setTimeout(() => void tick(), POLL_MS);
+      }
+    };
+
+    void tick();
+
     const onVisible = () => {
-      if (document.visibilityState === "visible") void refreshAll();
+      if (document.visibilityState === "visible" && openRef.current) {
+        void tick();
+      }
     };
-    window.addEventListener("focus", onVisible);
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
     return () => {
-      window.removeEventListener("focus", onVisible);
+      cancelled = true;
+      if (timer) clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
-  }, [open, refreshAll]);
+  }, [open, needsInstall, installUrl, appSlug, closeDialog, openInstallPopup]);
+
+  // 检测用户是否关掉了安装小窗口（且尚未装好）
+  useEffect(() => {
+    if (!open || !needsInstall || phase !== "waiting") return;
+
+    const id = window.setInterval(() => {
+      if (closingByUsRef.current) return;
+      if (!isGitHubAppInstallPopupClosed(popupRef.current)) return;
+      popupRef.current = null;
+      setPhase("closed");
+    }, POPUP_WATCH_MS);
+
+    return () => window.clearInterval(id);
+  }, [open, needsInstall, phase]);
+
+  const installStatusHint =
+    phase === "waiting"
+      ? "已打开安装页，正在检测安装状态…"
+      : phase === "blocked"
+        ? "未能自动打开安装窗口（可能被浏览器拦截），请点击下方按钮继续安装。"
+        : "未完成安装：安装窗口已关闭。请重新打开安装窗口完成授权。";
 
   const filtered = useMemo(
     () => (query.trim() ? repos.filter((r) => matchesQuery(r.fullName, query)) : repos),
@@ -155,7 +259,7 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
       setRepos(next);
       toast.success(`已导入 ${repo.fullName}`);
       onImported();
-      setOpen(false);
+      closeDialog();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "导入失败");
     } finally {
@@ -163,23 +267,23 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
     }
   }
 
-  const installLink = installUrl ? (
-    <a
-      href={installUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="font-medium text-primary underline-offset-4 hover:underline"
-    >
-      {installations?.length ? "在 GitHub 上配置可访问仓库" : "前往安装"}
-    </a>
-  ) : null;
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (v) {
+          setOpen(true);
+          openRef.current = true;
+          return;
+        }
+        closeDialog();
+      }}
+      disablePointerDismissal={needsInstall}
+    >
       <DialogTrigger
         render={
           <Button>
-            <Plus className="size-4" weight="bold" aria-hidden />
+            <PlusIcon className="size-4" weight="bold" aria-hidden />
             导入仓库
           </Button>
         }
@@ -189,25 +293,31 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
           <DialogTitle>导入 GitHub 仓库</DialogTitle>
           <DialogDescription>
             {installations === null ? (
-              "正在检测 GitHub App 安装状态…"
-            ) : installations.length ? (
-              <>从已授权 GitHub App 的仓库中选择导入。找不到仓库？{installLink}</>
+              `正在检测 ${appSlug} 安装状态…`
+            ) : needsInstall ? (
+              <>
+                需要先安装「{appSlug}」并授权仓库。
+                <span
+                  className={`mt-3 block text-center ${
+                    phase === "waiting" ? "text-primary" : "text-destructive"
+                  }`}
+                >
+                  {installStatusHint}
+                </span>
+              </>
             ) : (
-              <>需先安装 GitHub App。{installLink}</>
+              <>从已授权「{appSlug}」的仓库中选择导入。</>
             )}
           </DialogDescription>
         </DialogHeader>
-        {installations === null ? null : installations.length === 0 ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              未检测到 App 安装。完成安装后返回本页会自动刷新，也可手动刷新。
-            </p>
-            <Button variant="outline" size="sm" onClick={() => void refreshAll()}>
-              <ArrowClockwise className="size-4" aria-hidden />
-              我已完成安装，刷新
-            </Button>
-          </div>
-        ) : (
+        {needsInstall &&
+        (phase === "blocked" || phase === "closed") &&
+        installUrl ? (
+          <Button className="w-full" onClick={() => openInstallPopup(installUrl)}>
+            打开安装窗口
+          </Button>
+        ) : null}
+        {installations === null || needsInstall ? null : (
           <div className="min-w-0 space-y-4">
             <Select
               items={selectItems}
@@ -227,7 +337,7 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
             </Select>
             <div className="flex gap-2">
               <div className="relative min-w-0 flex-1">
-                <MagnifyingGlass
+                <MagnifyingGlassIcon
                   className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                   aria-hidden
                 />
@@ -246,7 +356,7 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
                 disabled={refreshing}
                 onClick={() => void loadRepos(Number(installationId))}
               >
-                <ArrowClockwise
+                <ArrowClockwiseIcon
                   className={`size-4 ${refreshing ? "animate-spin" : ""}`}
                   aria-hidden
                 />

@@ -1,7 +1,7 @@
 import {
-  GitPullRequest,
-  GlobeHemisphereWest,
-  Lightning,
+  GitPullRequestIcon,
+  GlobeHemisphereWestIcon,
+  LightningIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { SiteHeader } from "@/components/layout/site-header";
 import { HomeHeroActions } from "@/components/auth/home-hero-actions";
@@ -14,17 +14,17 @@ const features = [
   {
     title: "即开即用",
     desc: "无需 GitHub Actions 或本地环境，浏览器内完成配置与触发。",
-    icon: Lightning,
+    icon: LightningIcon,
   },
   {
     title: "PR 交付",
     desc: "译文写入功能分支并自动开 Pull Request，Review 后合并。",
-    icon: GitPullRequest,
+    icon: GitPullRequestIcon,
   },
   {
     title: "走向全球",
     desc: "多语言 README 链接、增量同步，扩大开源项目影响力。",
-    icon: GlobeHemisphereWest,
+    icon: GlobeHemisphereWestIcon,
   },
 ];
 
@@ -35,9 +35,11 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   let installUrl = "";
+  let appSlug = "GitHub App";
   try {
     const app = await metaApi.app();
     installUrl = app.githubAppInstallUrl;
+    if (app.githubAppSlug) appSlug = app.githubAppSlug;
   } catch {
     /* backend optional at build */
   }
@@ -76,7 +78,11 @@ export default async function HomePage({
             GitHub-i18n 帮助开源维护者将文档自动翻译为多种语言，支持增量同步与
             OpenRouter 多模型。
           </p>
-          <HomeHeroActions installUrl={installUrl} callbackUrl={callback} />
+          <HomeHeroActions
+            installUrl={installUrl}
+            appSlug={appSlug}
+            callbackUrl={callback}
+          />
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-4 py-10 sm:py-16 md:px-6">

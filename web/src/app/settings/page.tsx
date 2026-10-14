@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Trash } from "@phosphor-icons/react";
+import { TrashIcon } from "@phosphor-icons/react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import {
@@ -218,7 +218,7 @@ export default function SettingsPage() {
               <DialogTrigger
                 render={
                   <Button variant="destructive">
-                    <Trash className="size-4" aria-hidden />
+                    <TrashIcon className="size-4" aria-hidden />
                     删除账户
                   </Button>
                 }

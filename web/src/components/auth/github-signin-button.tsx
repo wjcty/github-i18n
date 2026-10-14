@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { GithubLogo } from "@phosphor-icons/react";
+import { GithubLogoIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AUTH_NETWORK_ERROR_MESSAGE } from "@/lib/labels";
@@ -70,7 +70,7 @@ export function GitHubSignInButton({
       <input type="hidden" name="csrfToken" value={csrfToken} readOnly />
       <input type="hidden" name="callbackUrl" value={callbackUrl} readOnly />
       <Button type="submit" size={size} variant={variant} disabled={submitting}>
-        <GithubLogo className="size-4" weight="fill" aria-hidden />
+        <GithubLogoIcon className="size-4" weight="fill" aria-hidden />
         {children ?? "GitHub 登录"}
       </Button>
     </form>

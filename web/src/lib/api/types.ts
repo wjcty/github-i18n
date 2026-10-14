@@ -37,6 +37,8 @@ export type ModelMeta = {
 
 export type AppMeta = {
   appName: string;
+  /** 来自后端 GITHUB_APP_SLUG，用于安装引导文案 */
+  githubAppSlug: string;
   githubAppInstallUrl: string;
 };
 

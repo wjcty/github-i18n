@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { FileMd, Folder } from "@phosphor-icons/react";
+import { FileMdIcon, FolderIcon } from "@phosphor-icons/react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TreeNode } from "@/lib/api/types";
@@ -54,9 +54,9 @@ function TreeRow({
           <span className="inline-block size-4 shrink-0" aria-hidden />
         )}
         {isDir ? (
-          <Folder className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <FolderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         ) : (
-          <FileMd className="size-4 shrink-0 text-primary" aria-hidden />
+          <FileMdIcon className="size-4 shrink-0 text-primary" aria-hidden />
         )}
         <label
           htmlFor={canToggle ? `path-${node.path}` : undefined}

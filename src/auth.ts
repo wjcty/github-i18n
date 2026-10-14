@@ -5,7 +5,11 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 import type { User } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { persistUserTokens, syncPrimaryEmail } from "@/lib/github/user-token";
+import {
+  persistUserTokens,
+  revokeGitHubAppAuthorization,
+  syncPrimaryEmail,
+} from "@/lib/github/user-token";
 
 const githubClientId =
   process.env.AUTH_GITHUB_ID ?? process.env.GITHUB_APP_CLIENT_ID ?? "";
@@ -140,6 +144,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await syncPrimaryEmail(user.id);
       } catch (err) {
         console.error("[auth] signIn event failed:", err);
+      }
+    },
+    async signOut(message) {
+      const userId =
+        "session" in message && message.session && "userId" in message.session
+          ? (message.session as { userId?: string }).userId
+          : undefined;
+      if (!userId) return;
+      try {
+        await revokeGitHubAppAuthorization(userId);
+      } catch (err) {
+        console.error("[auth] signOut revoke failed:", err);
       }
     },
   },

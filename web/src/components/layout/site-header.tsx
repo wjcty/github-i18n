@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { GearSix, GlobeHemisphereWest, House, SignOut } from "@phosphor-icons/react";
+import {
+  GearSixIcon,
+  GlobeHemisphereWestIcon,
+  HouseIcon,
+  SignOutIcon,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
 import { GitHubSignInButton } from "@/components/auth/github-signin-button";
@@ -18,7 +23,7 @@ export function SiteHeader() {
           href="/"
           className="flex shrink-0 items-center gap-2 font-mono text-sm font-semibold tracking-tight text-foreground transition-opacity hover:opacity-80"
         >
-          <GlobeHemisphereWest
+          <GlobeHemisphereWestIcon
             className="size-5 text-primary"
             weight="duotone"
             aria-hidden
@@ -29,11 +34,11 @@ export function SiteHeader() {
           {loggedIn ? (
             <>
               <LinkButton variant="ghost" size="sm" href="/dashboard" aria-label="仪表盘">
-                <House className="size-4 sm:hidden" aria-hidden />
+                <HouseIcon className="size-4 sm:hidden" aria-hidden />
                 <span className="hidden sm:inline">仪表盘</span>
               </LinkButton>
               <LinkButton variant="ghost" size="sm" href="/settings" aria-label="设置">
-                <GearSix className="size-4 sm:hidden" aria-hidden />
+                <GearSixIcon className="size-4 sm:hidden" aria-hidden />
                 <span className="hidden sm:inline">设置</span>
               </LinkButton>
               <Button
@@ -42,7 +47,7 @@ export function SiteHeader() {
                 aria-label="退出"
                 onClick={() => signOut({ callbackUrl: "/" })}
               >
-                <SignOut className="size-4" aria-hidden />
+                <SignOutIcon className="size-4" aria-hidden />
                 <span className="hidden sm:inline">退出</span>
               </Button>
             </>

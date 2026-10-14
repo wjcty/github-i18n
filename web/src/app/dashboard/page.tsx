@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowSquareOut } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import {
   DashboardShell,
@@ -22,12 +22,13 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
-import { reposApi } from "@/lib/api";
+import { metaApi, reposApi } from "@/lib/api";
 import type { RepoListItem } from "@/lib/api/types";
 
 export default function DashboardPage() {
   const [items, setItems] = useState<RepoListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [appSlug, setAppSlug] = useState("GitHub App");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,9 +46,18 @@ export default function DashboardPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    void metaApi
+      .app()
+      .then((app) => {
+        if (app.githubAppSlug) setAppSlug(app.githubAppSlug);
+      })
+      .catch(() => undefined);
+  }, []);
+
   return (
     <DashboardShell>
-      <InstallPromptDialog />
+      <InstallPromptDialog onInstalled={load} />
       <PageTitle
         title="仪表盘"
         description="管理已导入仓库，配置翻译并查看状态。"
@@ -59,7 +69,7 @@ export default function DashboardPage() {
           <Skeleton className="h-10 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <EmptyReposHint />
+        <EmptyReposHint appSlug={appSlug} />
       ) : (
         <>
         <ul className="space-y-3 md:hidden">
@@ -92,7 +102,7 @@ export default function DashboardPage() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <ArrowSquareOut className="size-4" aria-hidden />
+                    <ArrowSquareOutIcon className="size-4" aria-hidden />
                     PR
                   </AnchorButton>
                 ) : null}
@@ -134,7 +144,7 @@ export default function DashboardPage() {
                           target="_blank"
                           rel="noreferrer"
                         >
-                          <ArrowSquareOut className="size-4" aria-hidden />
+                          <ArrowSquareOutIcon className="size-4" aria-hidden />
                           PR
                         </AnchorButton>
                       ) : null}

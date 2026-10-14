@@ -75,13 +75,13 @@ export function PageTitle({
   );
 }
 
-export function EmptyReposHint() {
+export function EmptyReposHint({ appSlug = "GitHub App" }: { appSlug?: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
       <FolderGit2 className="size-10 text-primary" aria-hidden />
       <p className="mt-4 font-medium">还没有导入仓库</p>
       <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-        请先安装 GitHub App，然后从已授权的仓库中选择导入。
+        请先安装「{appSlug}」，然后从已授权的仓库中选择导入。
       </p>
     </div>
   );
