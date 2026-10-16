@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { signOut } from "next-auth/react";
 import { ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,10 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
   const [installUrl, setInstallUrl] = useState("");
   const [appSlug, setAppSlug] = useState("GitHub App");
   const [installations, setInstallations] = useState<Installation[] | null>(null);
+  const [installError, setInstallError] = useState<{
+    message: string;
+    code: string;
+  } | null>(null);
   const [installationId, setInstallationId] = useState<string>("");
   const [query, setQuery] = useState("");
   const [repos, setRepos] = useState<InstallRepoItem[]>([]);
@@ -70,7 +75,8 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
   installationIdRef.current = installationId;
   openRef.current = open;
 
-  const needsInstall = installations !== null && installations.length === 0;
+  const needsInstall =
+    installError == null && installations !== null && installations.length === 0;
 
   const openInstallPopup = useCallback((url: string) => {
     closingByUsRef.current = false;
@@ -84,6 +90,7 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
   const loadInstallations = useCallback(async () => {
     try {
       const { items } = await installationsApi.list();
+      setInstallError(null);
       setInstallations(items);
       setInstallationId((current) =>
         items.some((i) => String(i.installationId) === current)
@@ -94,8 +101,11 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
       );
       return items;
     } catch (e) {
-      setInstallations((prev) => prev ?? []);
-      toast.error(e instanceof ApiError ? e.message : `加载 ${appSlug} 安装信息失败`);
+      const message =
+        e instanceof ApiError ? e.message : `加载 ${appSlug} 安装信息失败`;
+      const code = e instanceof ApiError ? e.code : "INTERNAL_ERROR";
+      setInstallError({ message, code });
+      toast.error(message);
       return [];
     }
   }, [appSlug]);
@@ -179,8 +189,16 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
           closeDialog();
           return;
         }
-      } catch {
-        /* keep polling */
+      } catch (e) {
+        if (cancelled || !openRef.current) return;
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          closingByUsRef.current = true;
+          closeGitHubAppInstallPopup(popupRef.current);
+          popupRef.current = null;
+          popupOpenedRef.current = false;
+          setInstallError({ message: e.message, code: e.code });
+          return;
+        }
       }
       if (!cancelled && openRef.current) {
         timer = setTimeout(() => void tick(), POLL_MS);
@@ -292,7 +310,9 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
         <DialogHeader>
           <DialogTitle>导入 GitHub 仓库</DialogTitle>
           <DialogDescription>
-            {installations === null ? (
+            {installError ? (
+              installError.message
+            ) : installations === null ? (
               `正在检测 ${appSlug} 安装状态…`
             ) : needsInstall ? (
               <>
@@ -310,6 +330,25 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
             )}
           </DialogDescription>
         </DialogHeader>
+        {installError ? (
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              variant="outline"
+              onClick={() => void loadInstallations()}
+            >
+              重试
+            </Button>
+            {installError.code === "UNAUTHORIZED" ? (
+              <Button
+                className="flex-1"
+                onClick={() => void signOut({ callbackUrl: "/" })}
+              >
+                重新登录
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {needsInstall &&
         (phase === "blocked" || phase === "closed") &&
         installUrl ? (
@@ -317,7 +356,7 @@ export function ImportRepoDialog({ onImported }: { onImported: () => void }) {
             打开安装窗口
           </Button>
         ) : null}
-        {installations === null || needsInstall ? null : (
+        {installError || installations === null || needsInstall ? null : (
           <div className="min-w-0 space-y-4">
             <Select
               items={selectItems}

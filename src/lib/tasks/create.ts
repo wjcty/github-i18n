@@ -25,6 +25,8 @@ export async function createTranslationTask(input: {
   targetLanguages?: string[];
   webhookDeliveryId?: string;
   afterCommit?: string;
+  /** Webhook 场景：仅翻译这些已筛选路径 */
+  changedPaths?: string[];
 }) {
   const user = await prisma.user.findUnique({
     where: { id: input.userId },
@@ -57,6 +59,7 @@ export async function createTranslationTask(input: {
       trigger: input.trigger,
       webhookDeliveryId: input.webhookDeliveryId,
       afterCommit: input.afterCommit,
+      changedPaths: input.changedPaths ?? undefined,
       targetLanguages: targets,
       status: "pending",
     },

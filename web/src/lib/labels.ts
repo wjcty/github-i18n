@@ -1,4 +1,9 @@
-import type { LanguageMeta, TaskStatus, TranslationStatus } from "./api/types";
+import type {
+  LanguageMeta,
+  TaskMode,
+  TaskStatus,
+  TranslationStatus,
+} from "./api/types";
 
 /** 中-英对译标签，如：法语（French）、简体中文(zh-CN) */
 export function formatLanguageLabel(
@@ -45,11 +50,27 @@ export const taskStatusLabel: Record<TaskStatus, string> = {
   skipped: "已跳过",
 };
 
+export const taskModeLabel: Record<TaskMode, string> = {
+  full: "全量翻译",
+  incremental: "增量翻译",
+};
+
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export const AUTH_NETWORK_ERROR_MESSAGE =
   "因网络原因Github APP授权登录失败，请您检查网络或稍后再试";
 
 export const authErrorLabel: Record<string, string> = {
   AccessDenied: "您已取消 GitHub 授权，如需使用请重新登录",
+  OAuthCallback:
+    "GitHub 登录回调失败（常见于 Cookie / HTTPS 代理配置问题），请清除站点 Cookie 后重试",
+  Configuration: "认证配置有误，请检查 NEXTAUTH_URL / NEXTAUTH_SECRET 与 GitHub App Callback URL",
+  Default: AUTH_NETWORK_ERROR_MESSAGE,
 };
 
 export const skipReasonLabel: Record<string, string> = {

@@ -28,9 +28,26 @@ async function proxy(req: NextRequest, path: string[]) {
     if (key.toLowerCase() === "host") return;
     headers.set(key, value);
   });
-  headers.set("x-forwarded-host", incoming.host);
-  headers.set("x-forwarded-proto", incoming.protocol.replace(":", ""));
-  headers.set("x-forwarded-for", req.headers.get("x-forwarded-for") ?? "127.0.0.1");
+
+  // ngrok → localhost 时 req.url 常是 http，但浏览器实际是 https。
+  // 必须保留上游的 x-forwarded-*，否则 Auth.js 的 Secure Cookie / state 会校验失败。
+  const forwardedHost =
+    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    incoming.host;
+  const forwardedProto =
+    req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+    ((process.env.NEXTAUTH_URL ?? process.env.AUTH_URL ?? "").startsWith(
+      "https",
+    )
+      ? "https"
+      : incoming.protocol.replace(":", "") || "http");
+
+  headers.set("x-forwarded-host", forwardedHost);
+  headers.set("x-forwarded-proto", forwardedProto);
+  headers.set(
+    "x-forwarded-for",
+    req.headers.get("x-forwarded-for") ?? "127.0.0.1",
+  );
 
   const init: RequestInit = {
     method: req.method,

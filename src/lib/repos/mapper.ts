@@ -53,7 +53,7 @@ export function repoListItem(
     defaultBranch: repo.defaultBranch,
     baseLanguage: repo.baseLanguage,
     targetLanguages: parseJsonArray(repo.targetLanguages),
-    autoSyncEnabled: repo.autoSyncEnabled,
+    autoTranslate: repo.autoTranslate,
     lastTranslatedBaseCommit: repo.lastTranslatedBaseCommit,
     lastPrUrl,
     lastTask: lastTask

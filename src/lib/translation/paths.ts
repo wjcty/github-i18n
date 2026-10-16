@@ -5,5 +5,6 @@ export function translatedPath(lang: string, sourcePath: string): string {
 }
 
 export function isMarkdown(path: string): boolean {
-  return path.toLowerCase().endsWith(".md");
+  const lower = path.toLowerCase();
+  return lower.endsWith(".md") || lower.endsWith(".mdx");
 }

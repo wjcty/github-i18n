@@ -77,3 +77,10 @@ export function appUrl(): string {
 export function githubAppSlug(): string {
   return process.env.GITHUB_APP_SLUG ?? "github-i18n";
 }
+
+/** 平台写入 Git 的 commit message 前缀；Webhook 据此忽略，防止循环翻译 */
+export const TRANSLATION_COMMIT_PREFIX = "[github-i18n]";
+
+export function isTranslationCommitMessage(message: string | null | undefined): boolean {
+  return Boolean(message?.trimStart().startsWith(TRANSLATION_COMMIT_PREFIX));
+}

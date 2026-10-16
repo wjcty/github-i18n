@@ -73,12 +73,12 @@ export function InstallPromptDialog({
     setPhase("waiting");
   }, []);
 
-  const checkInstalled = useCallback(async (): Promise<boolean> => {
+  const checkInstalled = useCallback(async (): Promise<boolean | null> => {
     try {
       const { items } = await installationsApi.list();
       return items.length > 0;
     } catch {
-      return false;
+      return null;
     }
   }, []);
 
@@ -130,10 +130,11 @@ export function InstallPromptDialog({
     const tick = async () => {
       const installed = await checkInstalled();
       if (cancelled || !openRef.current) return;
-      if (installed) {
+      if (installed === true) {
         finishInstalled();
         return;
       }
+      if (installed === null) return;
       timer = setTimeout(() => void tick(), POLL_MS);
     };
 
@@ -142,7 +143,7 @@ export function InstallPromptDialog({
     const onVisible = () => {
       if (document.visibilityState !== "visible" || !openRef.current) return;
       void checkInstalled().then((installed) => {
-        if (installed && openRef.current) finishInstalled();
+        if (installed === true && openRef.current) finishInstalled();
       });
     };
     document.addEventListener("visibilitychange", onVisible);

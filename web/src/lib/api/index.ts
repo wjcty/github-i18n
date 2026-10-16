@@ -48,10 +48,32 @@ export const installationsApi = {
   },
 };
 
+function queryString(
+  params: Record<string, string | number | undefined | null>,
+): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    sp.set(key, String(value));
+  }
+  const qs = sp.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export const reposApi = {
-  list: (page = 1, pageSize = 20) =>
+  list: (
+    page = 1,
+    pageSize = 20,
+    filters?: { q?: string; lang?: string; status?: string },
+  ) =>
     apiFetch<Paginated<RepoListItem>>(
-      `/api/repos?page=${page}&pageSize=${pageSize}`,
+      `/api/repos${queryString({
+        page,
+        pageSize,
+        q: filters?.q,
+        lang: filters?.lang,
+        status: filters?.status,
+      })}`,
     ),
   get: (repoId: string) => apiFetch<RepoDetail>(`/api/repos/${repoId}`),
   import: (body: {
@@ -76,9 +98,20 @@ export const reposApi = {
       method: "POST",
       json: body,
     }),
-  tasks: (repoId: string, page = 1) =>
+  tasks: (
+    repoId: string,
+    page = 1,
+    pageSize = 10,
+    filters?: { status?: string; mode?: string; createdAt?: string },
+  ) =>
     apiFetch<Paginated<TaskDetail>>(
-      `/api/repos/${repoId}/tasks?page=${page}&pageSize=20`,
+      `/api/repos/${repoId}/tasks${queryString({
+        page,
+        pageSize,
+        status: filters?.status,
+        mode: filters?.mode,
+        createdAt: filters?.createdAt,
+      })}`,
     ),
 };
 

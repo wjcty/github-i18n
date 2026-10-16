@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { requireSession, requireRepoAccess } from "@/lib/auth-session";
 import { prisma } from "@/lib/db";
 import { apiError } from "@/lib/api-error";
 import { parsePagination } from "@/lib/pagination";
+import { createdAtFuzzySql, parseFuzzyDateRange } from "@/lib/fuzzy-datetime";
 import { createTranslationTask } from "@/lib/tasks/create";
 import { taskAcceptedResponse } from "@/lib/tasks/response";
 import { taskProgress } from "@/lib/repos/mapper";
@@ -69,12 +71,27 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (access.error) return access.error;
 
   const { page, pageSize, skip } = parsePagination(request.nextUrl.searchParams);
-  const status = request.nextUrl.searchParams.get("status") ?? undefined;
+  const status = request.nextUrl.searchParams.get("status")?.trim() || undefined;
+  const mode = request.nextUrl.searchParams.get("mode")?.trim() || undefined;
+  const createdAtQ = request.nextUrl.searchParams.get("createdAt")?.trim() || "";
 
-  const where = {
+  const where: Prisma.TranslationTaskWhereInput = {
     repositoryId: repoId,
     ...(status ? { status } : {}),
+    ...(mode ? { mode } : {}),
   };
+
+  const createdRange = createdAtQ ? parseFuzzyDateRange(createdAtQ) : undefined;
+  if (createdRange) {
+    where.createdAt = createdRange;
+  } else if (createdAtQ) {
+    const matched = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM TranslationTask
+      WHERE repositoryId = ${repoId}
+        AND ${createdAtFuzzySql(createdAtQ)}
+    `;
+    where.id = { in: matched.length ? matched.map((r) => r.id) : ["__none__"] };
+  }
 
   const [total, items] = await Promise.all([
     prisma.translationTask.count({ where }),

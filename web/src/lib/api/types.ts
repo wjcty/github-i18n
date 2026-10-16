@@ -78,7 +78,7 @@ export type RepoListItem = {
   defaultBranch: string;
   baseLanguage: string;
   targetLanguages: string[];
-  autoSyncEnabled: boolean;
+  autoTranslate: boolean;
   lastTranslatedBaseCommit: string | null;
   lastPrUrl: string | null;
   lastTask: {
@@ -98,7 +98,7 @@ export type RepoDetail = {
   defaultBranch: string;
   baseLanguage: string;
   targetLanguages: string[];
-  autoSyncEnabled: boolean;
+  autoTranslate: boolean;
   scopeConfig: ScopeConfig;
   ignoreFileContent: string;
   lastTranslatedBaseCommit: string | null;

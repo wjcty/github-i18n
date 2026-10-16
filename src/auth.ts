@@ -167,6 +167,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.githubLogin = dbUser.login;
         session.emailVerified = dbUser.emailVerified;
         if (dbUser.primaryEmail) session.user.email = dbUser.primaryEmail;
+        if (dbUser.name) session.user.name = dbUser.name;
+        session.user.image = dbUser.image ?? dbUser.avatarUrl ?? session.user.image;
       }
       return session;
     },

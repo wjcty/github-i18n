@@ -34,7 +34,7 @@ export function HomeHeroActions({
 
   return (
     <div className="mt-8 flex flex-wrap gap-3">
-      <GitHubSignInButton size="lg" callbackUrl={callbackUrl || "/dashboard"} />
+      {/* <GitHubSignInButton size="lg" callbackUrl={callbackUrl || "/dashboard"} />
       {installUrl ? (
         <AnchorButton
           size="lg"
@@ -45,7 +45,7 @@ export function HomeHeroActions({
         >
           安装 {appSlug}
         </AnchorButton>
-      ) : null}
+      ) : null} */}
     </div>
   );
 }

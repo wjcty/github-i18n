@@ -15,7 +15,7 @@ export function repoDetailResponse(
     defaultBranch: repo.defaultBranch,
     baseLanguage: repo.baseLanguage,
     targetLanguages: parseJsonArray(repo.targetLanguages),
-    autoSyncEnabled: repo.autoSyncEnabled,
+    autoTranslate: repo.autoTranslate,
     scopeConfig: parseScopeConfig(repo.scopeConfig),
     ignoreFileContent: repo.ignoreFileContent ?? "",
     lastTranslatedBaseCommit: repo.lastTranslatedBaseCommit,

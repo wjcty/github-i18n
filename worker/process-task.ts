@@ -6,7 +6,15 @@ import { openRouterChat, resolveApiKeyForUser } from "@/lib/openrouter";
 import { parseJsonArray, parseScopeConfig } from "@/lib/repos/mapper";
 import { filterTranslatablePaths } from "@/lib/translation/scope";
 import { translatedPath, isMarkdown } from "@/lib/translation/paths";
-import { upsertReadmeTranslationBlock } from "@/lib/translation/readme-links";
+import {
+  isRootReadme,
+  isTranslationUpToDate,
+  readmeSourceHash,
+  stripTranslationBlock,
+  upsertReadmeTranslationBlock,
+  withSourceMarker,
+} from "@/lib/translation/readme-links";
+import { TRANSLATION_COMMIT_PREFIX } from "@/lib/constants";
 function decodeContent(content: string, encoding: string): string {
   if (encoding === "base64") {
     return Buffer.from(content, "base64").toString("utf8");
@@ -69,14 +77,12 @@ async function translateMarkdown(
   return content.trim();
 }
 
-function shortId(id: string): string {
-  return id.slice(-6);
-}
-
-function branchName(repoId: string, taskId: string): string {
+/** 清晰时间戳分支名，例如 translations-20261015-112130 */
+function branchName(): string {
   const d = new Date();
-  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-  return `github-i18n/${repoId}-${ymd}-${shortId(taskId)}`;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  return `translations-${stamp}`;
 }
 
 export async function processTranslationTask(taskId: string) {
@@ -128,8 +134,12 @@ export async function processTranslationTask(taskId: string) {
       throw e;
     }
 
+    const webhookPaths = parseJsonArray(task.changedPaths);
     let candidatePaths: string[] = [];
-    if (task.mode === "incremental" && repo.lastTranslatedBaseCommit) {
+    if (webhookPaths.length > 0) {
+      // Webhook 增量：仅翻译本次 push 已筛选的变更文档
+      candidatePaths = webhookPaths;
+    } else if (task.mode === "incremental" && repo.lastTranslatedBaseCommit) {
       const { data: compare } = await octokit.rest.repos.compareCommits({
         owner,
         repo: name,
@@ -165,7 +175,7 @@ export async function processTranslationTask(taskId: string) {
     }
 
     const { key, source, model } = await resolveApiKeyForUser(user.id);
-    const headBranch = branchName(repo.id, taskId);
+    const headBranch = branchName();
 
     await prisma.translationTask.update({
       where: { id: taskId },
@@ -183,8 +193,10 @@ export async function processTranslationTask(taskId: string) {
         data: { currentFile: filePath, doneFiles: i },
       });
 
-      const sourceText = await getFileContent(octokit, owner, name, filePath, headSha);
-      if (!sourceText) continue;
+      const rawSource = await getFileContent(octokit, owner, name, filePath, headSha);
+      if (!rawSource) continue;
+      const readme = isRootReadme(filePath);
+      const sourceText = readme ? stripTranslationBlock(rawSource) : rawSource;
 
       for (const lang of targets) {
         let translated = await translateMarkdown(
@@ -195,6 +207,7 @@ export async function processTranslationTask(taskId: string) {
           filePath,
           sourceText,
         );
+        if (readme) translated = withSourceMarker(translated, readmeSourceHash(rawSource));
 
         const outPath = translatedPath(lang, filePath);
         fileOutputs.push({ path: outPath, content: translated });
@@ -226,17 +239,42 @@ export async function processTranslationTask(taskId: string) {
       });
     }
 
-    const baseReadme = files.find((f) => f.toLowerCase() === "readme.md");
-    if (baseReadme) {
-      const readmeSource = await getFileContent(octokit, owner, name, baseReadme, headSha);
+    // 全量（或本次翻译了 README）：
+    // 1) 确保 translations/{lang}/README.md 存在且与当前 README 正文一致，否则翻译；
+    // 2) 在根目录 README.md 的链接区块中追加本次语言（保留已有语言）。
+    const readmeInScope = files.some(isRootReadme);
+    if (task.mode === "full" || readmeInScope) {
+      const readmeSource = await getFileContent(octokit, owner, name, "README.md", headSha);
       if (readmeSource) {
+        if (!readmeInScope) {
+          const hash = readmeSourceHash(readmeSource);
+          const body = stripTranslationBlock(readmeSource);
+          for (const lang of targets) {
+            const outPath = translatedPath(lang, "README.md");
+            const existing = await getFileContent(octokit, owner, name, outPath, headSha);
+            if (isTranslationUpToDate(existing, hash)) continue;
+
+            await prisma.translationTask.update({
+              where: { id: taskId },
+              data: { currentFile: "README.md" },
+            });
+            const translated = withSourceMarker(
+              await translateMarkdown(key, model, repo.baseLanguage, lang, "README.md", body),
+              hash,
+            );
+            fileOutputs.push({ path: outPath, content: translated });
+            charsIn += body.length;
+            charsOut += translated.length;
+          }
+        }
+
         const updated = upsertReadmeTranslationBlock(
           readmeSource,
           targets,
           repo.baseLanguage,
         );
         if (updated !== readmeSource) {
-          fileOutputs.push({ path: baseReadme, content: updated });
+          fileOutputs.push({ path: "README.md", content: updated });
         }
       }
     }
@@ -270,7 +308,7 @@ export async function processTranslationTask(taskId: string) {
       })),
     });
 
-    const commitMessage = `[github-i18n] chore(i18n): translations (${targets.join(", ")})`;
+    const commitMessage = `${TRANSLATION_COMMIT_PREFIX} chore(i18n): translations (${targets.join(", ")})`;
     const authorName = user.name ?? user.login;
     const authorEmail = user.primaryEmail ?? `${user.githubId}+github-i18n@users.noreply.github.com`;
 

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { requireSession } from "@/lib/auth-session";
 import { prisma } from "@/lib/db";
 import { apiError } from "@/lib/api-error";
 import { parsePagination } from "@/lib/pagination";
-import { repoListItem } from "@/lib/repos/mapper";
+import { attachLastTasks, languageFilter } from "@/lib/repos/query";
 import { getInstallationOctokit } from "@/lib/github/app";
 
 const importSchema = z.object({
@@ -18,28 +19,43 @@ export async function GET(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const { page, pageSize, skip } = parsePagination(request.nextUrl.searchParams);
+  const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const lang = request.nextUrl.searchParams.get("lang")?.trim() ?? "";
+  const status = request.nextUrl.searchParams.get("status")?.trim() ?? "";
 
-  const [total, repos] = await Promise.all([
-    prisma.repository.count({ where: { userId: auth.user.id } }),
-    prisma.repository.findMany({
-      where: { userId: auth.user.id },
-      orderBy: { updatedAt: "desc" },
-      skip,
-      take: pageSize,
-    }),
-  ]);
+  const where: Prisma.RepositoryWhereInput = {
+    userId: auth.user.id,
+    ...(q ? { fullName: { contains: q } } : {}),
+    ...languageFilter(lang),
+  };
 
-  const items = await Promise.all(
-    repos.map(async (repo) => {
-      const lastTask = await prisma.translationTask.findFirst({
-        where: { repositoryId: repo.id },
-        orderBy: { createdAt: "desc" },
-      });
-      return repoListItem(repo, lastTask, lastTask?.prUrl ?? null);
-    }),
+  if (!status) {
+    const [total, repos] = await Promise.all([
+      prisma.repository.count({ where }),
+      prisma.repository.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+    ]);
+    const items = await attachLastTasks(repos);
+    return NextResponse.json({ items, page, pageSize, total });
+  }
+
+  const repos = await prisma.repository.findMany({
+    where,
+    orderBy: { updatedAt: "desc" },
+  });
+  const filtered = (await attachLastTasks(repos)).filter(
+    (item) => item.translationStatus === status,
   );
-
-  return NextResponse.json({ items, page, pageSize, total });
+  return NextResponse.json({
+    items: filtered.slice(skip, skip + pageSize),
+    page,
+    pageSize,
+    total: filtered.length,
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -108,7 +124,7 @@ export async function POST(request: NextRequest) {
       defaultBranch: repo.defaultBranch,
       baseLanguage: repo.baseLanguage,
       targetLanguages: [],
-      autoSyncEnabled: repo.autoSyncEnabled,
+      autoTranslate: repo.autoTranslate,
       lastTranslatedBaseCommit: repo.lastTranslatedBaseCommit,
       translationStatus: "not_started",
     },

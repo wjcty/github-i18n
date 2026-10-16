@@ -4,7 +4,6 @@ import {
   LightningIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { SiteHeader } from "@/components/layout/site-header";
-import { HomeHeroActions } from "@/components/auth/home-hero-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { metaApi } from "@/lib/api";
@@ -78,11 +77,11 @@ export default async function HomePage({
             GitHub-i18n 帮助开源维护者将文档自动翻译为多种语言，支持增量同步与
             OpenRouter 多模型。
           </p>
-          <HomeHeroActions
+          {/* <HomeHeroActions
             installUrl={installUrl}
             appSlug={appSlug}
             callbackUrl={callback}
-          />
+          /> */}
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-4 py-10 sm:py-16 md:px-6">

@@ -12,7 +12,7 @@ type Params = { params: Promise<{ repoId: string }> };
 const patchSchema = z.object({
   baseLanguage: z.string().optional(),
   targetLanguages: z.array(z.string()).optional(),
-  autoSyncEnabled: z.boolean().optional(),
+  autoTranslate: z.boolean().optional(),
   scopeConfig: z
     .object({
       mode: z.literal("paths"),
@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     data: {
       baseLanguage: data.baseLanguage,
       targetLanguages: data.targetLanguages,
-      autoSyncEnabled: data.autoSyncEnabled,
+      autoTranslate: data.autoTranslate,
       scopeConfig: data.scopeConfig as ScopeConfig | undefined,
       ignoreFileContent: data.ignoreFileContent,
     },

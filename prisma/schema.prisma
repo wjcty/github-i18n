@@ -105,7 +105,7 @@ model Repository {
   scopeConfig              Json      @default("{\"mode\":\"paths\",\"includePaths\":[\"README.md\"],\"excludePaths\":[]}")
   ignoreFileContent        String?   @db.Text
   lastTranslatedBaseCommit String?
-  autoSyncEnabled          Boolean   @default(true)
+  autoTranslate            Boolean   @default(false)
   treeCache                Json?
   treeCachedAt             DateTime?
   createdAt                DateTime  @default(now())
@@ -127,6 +127,8 @@ model TranslationTask {
   mode              String
   trigger           String    @default("manual")
   webhookDeliveryId String?
+  /// Webhook 增量：本次 push 筛选后的源文件路径；为空则走 compare/全量逻辑
+  changedPaths      Json?
   targetLanguages   Json
   totalFiles        Int       @default(0)
   doneFiles         Int       @default(0)

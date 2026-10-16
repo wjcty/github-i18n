@@ -37,7 +37,7 @@ export default function RepoConfigPage() {
   const [targetLanguages, setTargetLanguages] = useState<string[]>([]);
   const [includePaths, setIncludePaths] = useState<string[]>([]);
   const [ignoreFileContent, setIgnoreFileContent] = useState("");
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [treeLoading, setTreeLoading] = useState(false);
@@ -75,7 +75,7 @@ export default function RepoConfigPage() {
       setTargetLanguages(detail.targetLanguages);
       setIncludePaths(detail.scopeConfig?.includePaths ?? []);
       setIgnoreFileContent(detail.ignoreFileContent ?? "");
-      setAutoSyncEnabled(detail.autoSyncEnabled);
+      setAutoTranslate(detail.autoTranslate);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "加载配置失败");
     } finally {
@@ -108,7 +108,7 @@ export default function RepoConfigPage() {
       const updated = await reposApi.patch(id, {
         baseLanguage,
         targetLanguages,
-        autoSyncEnabled,
+        autoTranslate,
         ignoreFileContent,
         scopeConfig: {
           mode: "paths",
@@ -202,14 +202,15 @@ export default function RepoConfigPage() {
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
               <div>
-                <p className="text-sm font-medium">Webhook 自动同步</p>
+                <p className="text-sm font-medium">自动翻译</p>
                 <p className="text-xs text-muted-foreground">
-                  默认分支 push 时自动增量翻译
+                  开启后，默认分支上范围内文档变更时自动创建增量翻译任务。Webhook
+                  由已安装的 GitHub App 自动下发，无需手动配置。
                 </p>
               </div>
               <Switch
-                checked={autoSyncEnabled}
-                onCheckedChange={setAutoSyncEnabled}
+                checked={autoTranslate}
+                onCheckedChange={setAutoTranslate}
               />
             </div>
           </CardContent>
