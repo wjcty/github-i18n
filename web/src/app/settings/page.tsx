@@ -55,7 +55,7 @@ export default function SettingsPage() {
         metaApi.models(),
       ]);
       setSettings(s);
-      const modelList = [...m.models];
+      const modelList = m.models.map(({ id, name }) => ({ id, name }));
       const savedId = s.defaultModelId || m.defaultModelId;
       if (savedId && !modelList.some((x) => x.id === savedId)) {
         modelList.unshift({ id: savedId, name: `${savedId}（当前已保存）` });
