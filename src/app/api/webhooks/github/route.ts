@@ -15,6 +15,7 @@ import { isMarkdown } from "@/lib/translation/paths";
 import { isTranslationCommitMessage } from "@/lib/constants";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 /** 本次 push 全部为平台翻译提交时忽略，避免合并/推送译文触发循环 */
 function isOnlyTranslationCommits(payload: Record<string, unknown>): boolean {

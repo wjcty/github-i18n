@@ -1,13 +1,16 @@
 import { prisma } from "@/lib/db";
 
 export async function enqueueTaskJob(taskId: string) {
-  return prisma.job.create({
+  const job = await prisma.job.create({
     data: {
       taskId,
       status: "pending",
       runAt: new Date(),
     },
   });
+  const { scheduleDrain } = await import("@/lib/schedule-drain");
+  scheduleDrain();
+  return job;
 }
 
 export async function claimNextJob() {

@@ -44,6 +44,6 @@ export function loadGitHubAppPrivateKey(): string {
   }
 
   throw new Error(
-    `GitHub App private key not found. Set GITHUB_APP_PRIVATE_KEY=./private-key.pem in .env and place the PEM at project root (see .env.example).`,
+    "GitHub App private key not found. Locally use GITHUB_APP_PRIVATE_KEY=./private-key.pem. On Vercel set GITHUB_APP_PRIVATE_KEY to the PEM text itself (real newlines or \\n), not a file path.",
   );
 }

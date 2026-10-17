@@ -7,6 +7,9 @@ import { taskAcceptedResponse } from "@/lib/tasks/response";
 
 type Params = { params: Promise<{ taskId: string }> };
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 export async function POST(_request: NextRequest, { params }: Params) {
   const auth = await requireSession();
   if (auth.error) return auth.error;

@@ -9,8 +9,12 @@ import { createdAtFuzzySql, parseFuzzyDateRange } from "@/lib/fuzzy-datetime";
 import { createTranslationTask } from "@/lib/tasks/create";
 import { taskAcceptedResponse } from "@/lib/tasks/response";
 import { taskProgress } from "@/lib/repos/mapper";
+import { scheduleDrain, shouldKickTask } from "@/lib/schedule-drain";
 
 type Params = { params: Promise<{ repoId: string }> };
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const createSchema = z.object({
   mode: z.enum(["full", "incremental"]),
@@ -102,6 +106,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       take: pageSize,
     }),
   ]);
+
+  if (items.some((t) => shouldKickTask(t.status, t.updatedAt))) {
+    scheduleDrain();
+  }
 
   return NextResponse.json({
     items: items.map((t) => ({

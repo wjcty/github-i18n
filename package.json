@@ -6,12 +6,12 @@
     "dev": "next dev -p 3123",
     "build": "prisma generate && next build",
     "start": "next start -p 3123",
-    "worker": "tsx --env-file=.env worker/index.ts",
+    "worker": "tsx worker/index.ts",
     "sync-private-key": "node scripts/sync-private-key-from-env.mjs",
     "db:init": "node scripts/init-database.mjs",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "worker:prod": "tsx --env-file=.env worker/index.ts",
+    "worker:prod": "tsx worker/index.ts",
     "lint": "next lint"
   },
   "dependencies": {
