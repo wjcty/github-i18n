@@ -40,7 +40,7 @@ function settingsResponse(
   nextReset.setMonth(nextReset.getMonth() + 1);
 
   return {
-    billingMode: settings?.billingMode ?? "BYOK",
+    billingMode: settings?.billingMode ?? "PLATFORM",
     defaultModelId: settings?.defaultModelId ?? DEFAULT_MODEL_ID,
     defaultTargetLangs: langs,
     openrouterKeyConfigured: configured,

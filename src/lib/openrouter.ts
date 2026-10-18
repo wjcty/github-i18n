@@ -15,6 +15,8 @@ export type OpenRouterModelMeta = {
 /** OpenRouter rankings 文本模型周榜可选数量（与 openrouter.ai/rankings 对齐） */
 export const TOP_TEXT_MODELS_LIMIT = 20;
 
+const OPENROUTER_MAX_MODELS = 3;
+
 const REGION_FALLBACK_MODELS = [
   "deepseek/deepseek-chat",
   "qwen/qwen-2.5-7b-instruct",
@@ -145,7 +147,11 @@ export async function openRouterChat(
   jsonMode = false,
 ): Promise<{ content: string; charsIn: number; charsOut: number }> {
   const charsIn = messages.reduce((n, m) => n + m.content.length, 0);
-  const models = [model, ...REGION_FALLBACK_MODELS.filter((id) => id !== model)];
+  // OpenRouter 限制 models 数组最多 3 项（含主模型）
+  const models = [model, ...REGION_FALLBACK_MODELS.filter((id) => id !== model)].slice(
+    0,
+    OPENROUTER_MAX_MODELS,
+  );
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -226,7 +232,7 @@ export async function resolveApiKeyForUser(
   const settings = await (
     await import("@/lib/db")
   ).prisma.userSettings.findUnique({ where: { userId } });
-  const billingMode = settings?.billingMode ?? "BYOK";
+  const billingMode = settings?.billingMode ?? "PLATFORM";
   const model = settings?.defaultModelId ?? DEFAULT_MODEL_ID;
 
   // BYOK：只用用户设置里保存的 Key，绝不回退到 .env 平台 Key

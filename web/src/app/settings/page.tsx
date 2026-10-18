@@ -38,7 +38,7 @@ const OPENROUTER_KEYS_URL = "https://openrouter.ai/keys";
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
-  const [billingMode, setBillingMode] = useState<BillingMode>("BYOK");
+  const [billingMode, setBillingMode] = useState<BillingMode>("PLATFORM");
   const [defaultModelId, setDefaultModelId] = useState("");
   const [apiKey, setApiKey] = useState("");
   /** 仅本地标记；点「保存」后才真正清空服务端 Key */
@@ -167,8 +167,8 @@ export default function SettingsPage() {
               <Label>计费模式</Label>
               <Select
                 items={[
-                  { value: "BYOK", label: "自带 OpenRouter Key" },
                   { value: "PLATFORM", label: "平台托管配额" },
+                  { value: "BYOK", label: "自带 OpenRouter Key" },
                 ]}
                 value={billingMode}
                 onValueChange={(v) => v && setBillingMode(v as BillingMode)}
@@ -177,8 +177,8 @@ export default function SettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BYOK">自带 OpenRouter Key</SelectItem>
                   <SelectItem value="PLATFORM">平台托管配额</SelectItem>
+                  <SelectItem value="BYOK">自带 OpenRouter Key</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-sm leading-relaxed text-muted-foreground">
